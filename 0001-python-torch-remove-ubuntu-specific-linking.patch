@@ -1,0 +1,33 @@
+From f70ef37d0b3c780fd17be199e66a81ffa679f93e Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 18 Nov 2023 12:05:43 -0500
+Subject: [PATCH] python-torch remove ubuntu specific linking
+
+Signed-off-by: Tom Rix <trix@redhat.com>
+---
+ CMakeLists.txt | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 86c34984b2..f7c4a7b05f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -479,9 +479,12 @@ option(BUILD_EXECUTORCH "Master flag to build Executorch" ON)
+ # This is a fix for a rare build issue on Ubuntu:
+ # symbol lookup error: miniconda3/envs/pytorch-py3.7/lib/libmkl_intel_lp64.so: undefined symbol: mkl_blas_dsyrk
+ # https://software.intel.com/en-us/articles/symbol-lookup-error-when-linking-intel-mkl-with-gcc-on-ubuntu
+-if(LINUX)
+-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+-endif()
++
++# This is not ubuntu!
++# if(LINUX)
++#  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
++# endif()
++set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--as-needed")
+ 
+ if(MSVC)
+   set(CMAKE_NINJA_CMCLDEPS_RC OFF)
+-- 
+2.42.1
+
