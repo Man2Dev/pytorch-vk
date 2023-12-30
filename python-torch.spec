@@ -262,7 +262,7 @@ rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.hpp
 # export SETUPTOOLS_SCM_DEBUG=1
 
 # For verbose cmake output
-export VERBOSE=ON
+# export VERBOSE=ON
 # For verbose linking
 # export CMAKE_SHARED_LINKER_FLAGS=-Wl,--verbose
 
@@ -323,8 +323,6 @@ export USE_XNNPACK=ON
 #
 # See BZ 2244862
 %py3_build
-
-false
 
 %install
 %py3_install
