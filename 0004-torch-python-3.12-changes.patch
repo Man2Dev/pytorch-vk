@@ -1,15 +1,34 @@
-From dcd60ab193aca8811e1283003cbcca4946c6b48e Mon Sep 17 00:00:00 2001
+From fcf3cd70229cdc729d05ddab081ac886c9db6bd7 Mon Sep 17 00:00:00 2001
 From: Tom Rix <trix@redhat.com>
 Date: Fri, 29 Sep 2023 13:58:28 -0700
-Subject: [PATCH 4/6] torch python 3.12 changes
+Subject: [PATCH] torch python 3.12 changes
 
 Signed-off-by: Tom Rix <trix@redhat.com>
 ---
+ functorch/csrc/dim/dim.cpp       | 6 ++++++
  torch/csrc/dynamo/cpython_defs.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
+diff --git a/functorch/csrc/dim/dim.cpp b/functorch/csrc/dim/dim.cpp
+index b611dc3e8c2..c7009478aee 100644
+--- a/functorch/csrc/dim/dim.cpp
++++ b/functorch/csrc/dim/dim.cpp
+@@ -10,7 +10,13 @@
+ // Many APIs have changed/don't exist anymore
+ #if IS_PYTHON_3_12_PLUS
+ 
++#include "dim.h"
++
+ // Re-enable this some day
++PyObject* Dim_init() {
++    PyErr_SetString(PyExc_RuntimeError, "First class dim doesn't work with python 3.12");
++    return nullptr;
++}
+ 
+ #else
+ 
 diff --git a/torch/csrc/dynamo/cpython_defs.h b/torch/csrc/dynamo/cpython_defs.h
-index f0a0e1a88e..f58becd246 100644
+index f0a0e1a88e2..f58becd246e 100644
 --- a/torch/csrc/dynamo/cpython_defs.h
 +++ b/torch/csrc/dynamo/cpython_defs.h
 @@ -6,7 +6,7 @@
@@ -22,5 +41,5 @@ index f0a0e1a88e..f58becd246 100644
  #include <internal/pycore_frame.h>
  
 -- 
-2.41.0
+2.43.0
 

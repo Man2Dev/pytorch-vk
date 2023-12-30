@@ -24,9 +24,9 @@ diff --git a/version.txt b/version.txt
 index ecaf4eea7c..7ec1d6db40 100644
 --- a/version.txt
 +++ b/version.txt
-@@ -1 +1 @@
+@@ -1,1 +1,1 @@
 -2.1.0a0
-+2.1.0
++2.1.2
 -- 
 2.42.1
 
