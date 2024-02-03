@@ -1,0 +1,54 @@
+From b3b307add5724ee5730f161e16594fa702f34a19 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 3 Feb 2024 08:20:28 -0500
+Subject: [PATCH] no third_party FXdiv
+
+---
+ caffe2/CMakeLists.txt | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
+index b2f3adbfae..80a5625c8d 100644
+--- a/caffe2/CMakeLists.txt
++++ b/caffe2/CMakeLists.txt
+@@ -110,15 +110,15 @@ endif()
+ # Note: the folders that are being commented out have not been properly
+ # addressed yet.
+ 
+-if(NOT MSVC AND USE_XNNPACK)
+-  if(NOT TARGET fxdiv)
+-    set(FXDIV_BUILD_TESTS OFF CACHE BOOL "")
+-    set(FXDIV_BUILD_BENCHMARKS OFF CACHE BOOL "")
+-    add_subdirectory(
+-      "${FXDIV_SOURCE_DIR}"
+-      "${CMAKE_BINARY_DIR}/FXdiv")
+-  endif()
+-endif()
++#if(NOT MSVC AND USE_XNNPACK)
++#  if(NOT TARGET fxdiv)
++#    set(FXDIV_BUILD_TESTS OFF CACHE BOOL "")
++#    set(FXDIV_BUILD_BENCHMARKS OFF CACHE BOOL "")
++#    add_subdirectory(
++#      "${FXDIV_SOURCE_DIR}"
++#      "${CMAKE_BINARY_DIR}/FXdiv")
++#  endif()
++#endif()
+ 
+ add_subdirectory(core)
+ add_subdirectory(serialize)
+@@ -1081,9 +1081,9 @@ if(USE_XPU)
+   target_compile_definitions(torch_xpu PRIVATE USE_XPU)
+ endif()
+ 
+-if(NOT MSVC AND USE_XNNPACK)
+-  TARGET_LINK_LIBRARIES(torch_cpu PRIVATE fxdiv)
+-endif()
++#if(NOT MSVC AND USE_XNNPACK)
++#  TARGET_LINK_LIBRARIES(torch_cpu PRIVATE fxdiv)
++#endif()
+ 
+ # ==========================================================
+ # formerly-libtorch flags
+-- 
+2.43.0
+

@@ -1,0 +1,36 @@
+From 8cb61cf9282102ac225645fcc9fb4a1bb7cb15a2 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 3 Feb 2024 08:11:55 -0500
+Subject: [PATCH] no third_party foxi
+
+---
+ cmake/Dependencies.cmake | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 5f91f3ffab..8e1461af81 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -1567,7 +1567,7 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+       set_target_properties(onnx_proto PROPERTIES CXX_STANDARD 17)
+     endif()
+   endif()
+-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/foxi EXCLUDE_FROM_ALL)
++  # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/foxi EXCLUDE_FROM_ALL)
+ 
+   add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
+   if(NOT USE_SYSTEM_ONNX)
+@@ -1600,8 +1600,8 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+     message("-- Found onnx: ${ONNX_LIBRARY} ${ONNX_PROTO_LIBRARY}")
+     list(APPEND Caffe2_DEPENDENCY_LIBS onnx_proto onnx)
+   endif()
+-  include_directories(${FOXI_INCLUDE_DIRS})
+-  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
++#  include_directories(${FOXI_INCLUDE_DIRS})
++#  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
+   # Recover the build shared libs option.
+   set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
+ endif()
+-- 
+2.43.0
+

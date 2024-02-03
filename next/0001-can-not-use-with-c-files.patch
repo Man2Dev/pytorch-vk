@@ -1,0 +1,25 @@
+From a5dff521691a17701b5a02ec75e84cfe1bf605f7 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 3 Feb 2024 06:41:49 -0500
+Subject: [PATCH] can not use with c files
+
+---
+ cmake/Dependencies.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 4dd8042058..5f91f3ffab 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -1269,7 +1269,7 @@ if(USE_ROCM)
+     list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
+     list(APPEND HIP_CXX_FLAGS -DCAFFE2_USE_MIOPEN)
+     list(APPEND HIP_CXX_FLAGS -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP)
+-    list(APPEND HIP_CXX_FLAGS -std=c++17)
++#    list(APPEND HIP_CXX_FLAGS -std=c++17)
+     if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "6.0.0")
+       list(APPEND HIP_CXX_FLAGS -DHIPBLAS_V2)
+     endif()
+-- 
+2.43.0
+

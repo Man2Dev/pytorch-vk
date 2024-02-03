@@ -1,0 +1,25 @@
+From 04dd33db93b852fdfd7ea408813080b2e2026650 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 3 Feb 2024 06:41:20 -0500
+Subject: [PATCH] silence an assert
+
+---
+ aten/src/ATen/native/cuda/IndexKernel.cu | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/aten/src/ATen/native/cuda/IndexKernel.cu b/aten/src/ATen/native/cuda/IndexKernel.cu
+index 657c0c77b3..b406aa6687 100644
+--- a/aten/src/ATen/native/cuda/IndexKernel.cu
++++ b/aten/src/ATen/native/cuda/IndexKernel.cu
+@@ -249,7 +249,7 @@ void index_put_kernel_quantized_cuda(TensorIterator& iter, const IntArrayRef ind
+ 
+     gpu_index_kernel(iter, index_size, index_stride, [inv_scale, zero_point, qmin, qmax]C10_DEVICE(char* const out_data, const char* const in_data, const int64_t offset) {
+       int64_t qvalue = static_cast<int64_t>(zero_point + nearbyintf(*(float*)in_data * inv_scale));
+-      qvalue = std::clamp(qvalue, qmin, qmax);
++      //qvalue = std::clamp(qvalue, qmin, qmax);
+       *(scalar_t*)(out_data + offset) = static_cast<scalar_t>(qvalue);
+     });
+   });
+-- 
+2.43.0
+
