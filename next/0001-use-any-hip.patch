@@ -1,0 +1,34 @@
+From 4248211ce9a9de81bb3ade5d421ba709b19ead08 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Sat, 3 Feb 2024 15:01:28 -0500
+Subject: [PATCH] use any hip
+
+---
+ cmake/public/LoadHIP.cmake | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cmake/public/LoadHIP.cmake b/cmake/public/LoadHIP.cmake
+index 1abeb06228..28458c4146 100644
+--- a/cmake/public/LoadHIP.cmake
++++ b/cmake/public/LoadHIP.cmake
+@@ -30,7 +30,7 @@ endif()
+ message("Building PyTorch for GPU arch: ${PYTORCH_ROCM_ARCH}")
+ 
+ # Add HIP to the CMAKE Module Path
+-set(CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip ${CMAKE_MODULE_PATH})
++set(CMAKE_MODULE_PATH ${ROCM_PATH}/lib64/cmake/hip ${CMAKE_MODULE_PATH})
+ 
+ macro(find_package_and_print_version PACKAGE_NAME)
+   find_package("${PACKAGE_NAME}" ${ARGN})
+@@ -38,7 +38,7 @@ macro(find_package_and_print_version PACKAGE_NAME)
+ endmacro()
+ 
+ # Find the HIP Package
+-find_package_and_print_version(HIP 1.0)
++find_package_and_print_version(HIP MODULE)
+ 
+ if(HIP_FOUND)
+   set(PYTORCH_FOUND_HIP TRUE)
+-- 
+2.43.0
+
