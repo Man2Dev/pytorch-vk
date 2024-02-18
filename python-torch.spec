@@ -46,11 +46,11 @@ License:        BSD-3-Clause AND BSD-2-Clause AND 0BSD AND Apache-2.0 AND MIT AN
 URL:            https://pytorch.org/
 %if %{with gitcommit}
 Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
-Source1:        pyproject.toml
-Source2:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
+Source2:        pyproject.toml
 %else
 Source0:        %{forgeurl}/releases/download/v%{version}/pytorch-v%{version}.tar.gz
 %endif
+Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
 
 %if %{with gitcommit}
 
@@ -74,8 +74,6 @@ Patch103:      0001-use-any-hip.patch
 # * Remove warnings/errors for clang 17
 # * fxdiv is not a library on Fedora
 Patch0:         0001-Prepare-pytorch-cmake-for-fedora.patch
-# Use Fedora's fmt
-Patch1:         0002-Regenerate-flatbuffer-header.patch
 # https://github.com/pytorch/pytorch/pull/111048
 Patch2:         0003-Stub-in-kineto-ActivityType.patch
 # PyTorch has not fully baked 3.12 support because 3.12 is so new
@@ -101,16 +99,16 @@ Patch9:         0001-disable-as-needed-for-libtorch.patch
 
 # Limit to these because they are well behaved with clang
 ExclusiveArch:  x86_64 aarch64
+# RHEL does not do clang well
+%if 0%{?fedora}
 %global toolchain clang
+%endif
 
 BuildRequires:  clang-devel
 BuildRequires:  cmake
 BuildRequires:  cpuinfo-devel
 BuildRequires:  eigen3-devel
 BuildRequires:  fmt-devel
-%if %{without gitcommit}
-BuildRequires:  flatbuffers-devel
-%endif
 BuildRequires:  FP16-devel
 BuildRequires:  fxdiv-devel
 BuildRequires:  gcc-c++
@@ -130,7 +128,6 @@ BuildRequires:  protobuf-devel
 BuildRequires:  pthreadpool-devel
 BuildRequires:  psimd-devel
 BuildRequires:  python3-numpy
-BuildRequires:  python3-pybind11
 BuildRequires:  python3-pyyaml
 BuildRequires:  python3-typing-extensions
 BuildRequires:  sleef-devel
@@ -139,13 +136,17 @@ BuildRequires:  xnnpack-devel = 0.0^git20221221.51a9875
 
 BuildRequires:  python3-devel
 BuildRequires:  python3dist(filelock)
-BuildRequires:  python3dist(fsspec)
 BuildRequires:  python3dist(jinja2)
 BuildRequires:  python3dist(networkx)
 BuildRequires:  python3dist(setuptools)
-BuildRequires:  python3dist(sympy)
 BuildRequires:  python3dist(typing-extensions)
 BuildRequires:  python3dist(sphinx)
+
+%if 0%{?fedora}
+BuildRequires:  python3-pybind11
+BuildRequires:  python3dist(fsspec)
+BuildRequires:  python3dist(sympy)
+%endif
 
 %if %{with rocm}
 BuildRequires:  hipblas-devel
@@ -181,7 +182,9 @@ BuildRequires:  google-benchmark-devel
 
 # Apache-2.0
 Provides:       bundled(flatbuffers) = 22.3.3
+# MIT
 Provides:       bundled(miniz) = 2.1.0
+Provides:       bundled(pybind11) = 2.11.1
 
 
 %description
@@ -229,10 +232,7 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 # Remove bundled egg-info
 rm -rf %{pypi_name}.egg-info
 # Overwrite with a git checkout of the pyproject.toml
-cp %{SOURCE1} .
-
-tar xf %{SOURCE2}
-cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
+cp %{SOURCE2} .
 
 %if %{with rocm}
 # hipify
@@ -246,6 +246,8 @@ sed -i -e 's@rocm-core/rocm_version.h@rocm_version.h@' aten/src/ATen/hip/tunable
 
 %endif
 
+tar xf %{SOURCE1}
+cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
 
 %if %{with opencv}
 # Reduce requirements, *FOUND is not set 
@@ -268,12 +270,13 @@ mv third_party/miniz-2.1.0 .
 # setup.py depends on this script
 mv third_party/build_bundled.py .
 
+# Need the just untarred flatbuffers/flatbuffers.h
+mv third_party/flatbuffers .
+
+mv third_party/pybind11 .
+
 %if %{with test}
 mv third_party/googletest .
-%endif
-
-%if %{with gitcommit}
-mv third_party/flatbuffers .
 %endif
 
 # Remove everything
@@ -281,12 +284,15 @@ rm -rf third_party/*
 # Put stuff back
 mv build_bundled.py third_party
 mv miniz-2.1.0 third_party
+mv flatbuffers third_party
+mv pybind11 third_party
+
 %if %{with test}
 mv googletest third_party
 %endif
-%if %{with gitcommit}
-mv flatbuffers third_party
-%endif
+
+
+
 
 
 #
@@ -329,10 +335,19 @@ export USE_LITE_INTERPRETER_PROFILER=OFF
 export USE_MKLDNN=OFF
 export USE_NNPACK=OFF
 export USE_NUMPY=ON
-
 export USE_PYTORCH_QNNPACK=OFF
 export USE_QNNPACK=OFF
-export USE_SYSTEM_LIBS=ON
+export USE_SYSTEM_CPUINFO=ON
+export USE_SYSTEM_SLEEF=ON
+export USE_SYSTEM_EIGEN_INSTALL=ON
+export USE_SYSTEM_FP16=ON
+export USE_SYSTEM_PTHREADPOOL=ON
+export USE_SYSTEM_PSIMD=ON
+export USE_SYSTEM_FXDIV=ON
+export USE_SYSTEM_ONNX=ON
+export USE_SYSTEM_XNNPACK=ON
+export USE_SYSTEM_PYBIND11=OFF
+export USE_SYSTEM_LIBS=OFF
 export USE_TENSORPIPE=OFF
 export USE_XNNPACK=ON
 
