@@ -1,4 +1,4 @@
-From c46146dc31ed3dc0ebb6ca28c01330db8ba5d4f2 Mon Sep 17 00:00:00 2001
+From 2ce255b75760a0a513fb1706629b416f76a5c822 Mon Sep 17 00:00:00 2001
 From: Tom Rix <trix@redhat.com>
 Date: Sat, 3 Feb 2024 08:16:04 -0500
 Subject: [PATCH] no third_party fmt
@@ -10,23 +10,23 @@ Subject: [PATCH] no third_party fmt
  3 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
-index cb81556ff2..7529b2aec9 100644
+index 1f742f4c176..4fa08913bdd 100644
 --- a/c10/CMakeLists.txt
 +++ b/c10/CMakeLists.txt
 @@ -87,7 +87,7 @@ endif()
  if(C10_USE_GLOG)
-     target_link_libraries(c10 PUBLIC glog::glog)
+   target_link_libraries(c10 PUBLIC glog::glog)
  endif()
 -target_link_libraries(c10 PRIVATE fmt::fmt-header-only)
 +target_link_libraries(c10 PRIVATE fmt)
  
  if(C10_USE_NUMA)
-   target_include_directories(c10 PRIVATE ${Numa_INCLUDE_DIR})
+   message(STATUS "NUMA paths:")
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 8310f29e01..c99d0d762a 100644
+index 6f5a2d5feff..42fbf80f6e8 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
-@@ -1834,7 +1834,7 @@ endif()
+@@ -1837,7 +1837,7 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -35,7 +35,7 @@ index 8310f29e01..c99d0d762a 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1843,9 +1843,9 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1846,9 +1846,9 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
@@ -48,7 +48,7 @@ index 8310f29e01..c99d0d762a 100644
  
  # ---[ Kineto
 diff --git a/torch/CMakeLists.txt b/torch/CMakeLists.txt
-index 24903a207e..3a7751dc00 100644
+index 97a72eed55b..9e5014d1980 100644
 --- a/torch/CMakeLists.txt
 +++ b/torch/CMakeLists.txt
 @@ -80,7 +80,7 @@ set(TORCH_PYTHON_LINK_LIBRARIES
@@ -61,5 +61,5 @@ index 24903a207e..3a7751dc00 100644
  
  if(USE_ASAN AND TARGET Sanitizer::address)
 -- 
-2.43.0
+2.43.2
 
