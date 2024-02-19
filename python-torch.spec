@@ -55,11 +55,12 @@ License:        BSD-3-Clause AND BSD-2-Clause AND 0BSD AND Apache-2.0 AND MIT AN
 URL:            https://pytorch.org/
 %if %{with gitcommit}
 Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
-Source2:        pyproject.toml
+Source100:        pyproject.toml
 %else
 Source0:        %{forgeurl}/releases/download/v%{version}/pytorch-v%{version}.tar.gz
 %endif
 Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
+Source2:        https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz
 
 %if %{with gitcommit}
 
@@ -243,7 +244,7 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 # Remove bundled egg-info
 rm -rf %{pypi_name}.egg-info
 # Overwrite with a git checkout of the pyproject.toml
-cp %{SOURCE2} .
+cp %{SOURCE100} .
 
 %if %{with rocm}
 # hipify
@@ -259,6 +260,9 @@ sed -i -e 's@rocm-core/rocm_version.h@rocm_version.h@' aten/src/ATen/hip/tunable
 
 tar xf %{SOURCE1}
 cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
+
+tar xf %{SOURCE2}
+cp -r pybind11-2.11.1/* third_party/pybind11/
 
 %if %{with opencv}
 # Reduce requirements, *FOUND is not set 
@@ -311,10 +315,6 @@ mv cudnn_frontend third_party
 %if %{with test}
 mv googletest third_party
 %endif
-
-
-
-
 
 #
 # Fake out pocketfft, and system header will be used
