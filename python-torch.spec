@@ -36,6 +36,15 @@
 # For testing distributed
 %bcond_with distributed
 
+# For testing cuda
+%bcond_with cuda
+# Which cuda ? Look at your /usr/local/cuda-<ver>, this is mine
+# Which has problems with 2.1.2 ..
+%global cuda_ver 12.3
+# Which arch ? Who knows, pick something yourself or go with native
+%global cuda_arch native
+
+
 Name:           python-%{pypi_name}
 Version:        %{pypi_version}
 Release:        %autorelease
@@ -99,9 +108,11 @@ Patch9:         0001-disable-as-needed-for-libtorch.patch
 
 # Limit to these because they are well behaved with clang
 ExclusiveArch:  x86_64 aarch64
-# RHEL does not do clang well
 %if 0%{?fedora}
 %global toolchain clang
+%else
+# RHEL does not do clang well, nor lto
+%global _lto_cflags %nil
 %endif
 
 BuildRequires:  clang-devel
@@ -275,6 +286,11 @@ mv third_party/flatbuffers .
 
 mv third_party/pybind11 .
 
+%if %{with cuda}
+mv third_party/nvfuser .
+mv third_party/cudnn_frontend .
+%endif
+
 %if %{with test}
 mv third_party/googletest .
 %endif
@@ -286,6 +302,11 @@ mv build_bundled.py third_party
 mv miniz-2.1.0 third_party
 mv flatbuffers third_party
 mv pybind11 third_party
+
+%if %{with cuda}
+mv nvfuser third_party
+mv cudnn_frontend third_party
+%endif
 
 %if %{with test}
 mv googletest third_party
@@ -308,6 +329,11 @@ rm caffe2/contrib/opencl/OpenCL/cl.hpp
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.h
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.hpp
 
+%if %{with cuda}
+# build complains about not being able to build -pie without -fPIC
+sed -i -e 's@string(APPEND CMAKE_CUDA_FLAGS " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")@string(APPEND CMAKE_CUDA_FLAGS " -fPIC -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")@' CMakeLists.txt
+%endif
+
 %build
 
 # For debugging setup.py
@@ -326,7 +352,6 @@ export BUILD_SHARED_LIBS=ON
 export CMAKE_BUILD_TYPE=RelWithDebInfo
 export CMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
 export CAFFE2_LINK_LOCAL_PROTOBUF=OFF
-export USE_CUDA=OFF
 export USE_FBGEMM=OFF
 export USE_GOLD_LINKER=OFF
 export USE_ITT=OFF
@@ -379,6 +404,14 @@ export ROCM_PATH=%{_prefix}
 export DEVICE_LIB_PATH=/usr/lib/clang/17/amdgcn/bitcode
 %else
 export USE_ROCM=OFF
+%endif
+
+%if %{with cuda}
+export CUDACXX=/usr/local/cuda/bin/nvcc
+export USE_CUDA=ON
+export USE_NCCL=OFF
+%else
+export USE_CUDA=OFF
 %endif
 
 %if %{with test}
