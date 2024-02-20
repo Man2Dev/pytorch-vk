@@ -4,7 +4,7 @@
 %global forgeurl https://github.com/pytorch/pytorch
 
 # So pre releases can be tried
-%bcond_with gitcommit
+%bcond_without gitcommit
 %if %{with gitcommit}
 # The top of tree ~2/18/24
 %global commit0 372d078f361e726bb4ac0884ac334b04c58179ef
@@ -28,7 +28,7 @@
 %bcond_with rocm
 
 # For testing openmp
-%bcond_with openmp
+%bcond_without openmp
 
 # For testing caffe2
 %bcond_with caffe2
@@ -61,6 +61,11 @@ Source0:        %{forgeurl}/releases/download/v%{version}/pytorch-v%{version}.ta
 %endif
 Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
 Source2:        https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz
+
+%if %{with cuda}
+Source10:       https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v1.0.3.tar.gz
+Source11:       https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.3.0.tar.gz
+%endif
 
 %if %{with gitcommit}
 
@@ -144,7 +149,11 @@ BuildRequires:  python3-pyyaml
 BuildRequires:  python3-typing-extensions
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
+%if %{with gitcommit}
+BuildRequires:  xnnpack-devel = 0.0^git20231127.d9cce34
+%else
 BuildRequires:  xnnpack-devel = 0.0^git20221221.51a9875
+%endif
 
 BuildRequires:  python3-devel
 BuildRequires:  python3dist(filelock)
@@ -264,12 +273,27 @@ cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
 tar xf %{SOURCE2}
 cp -r pybind11-2.11.1/* third_party/pybind11/
 
+%if %{with cuda}
+tar xf %{SOURCE10}
+cp -r cudnn-frontend-1.0.3/* third_party/cudnn_frontend/
+tar xf %{SOURCE11}
+cp -r cutlass-3.3.0/* third_party/cutlass/
+%endif
+
 %if %{with opencv}
 # Reduce requirements, *FOUND is not set 
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND AND USE_FFMPEG AND FFMPEG_FOUND/USE_OPENCV AND USE_FFMPEG/' caffe2/video/CMakeLists.txt
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND/USE_OPENCV/' caffe2/image/CMakeLists.txt
 sed -i -e 's/STATUS/FATAL/' caffe2/image/CMakeLists.txt
 cat caffe2/image/CMakeLists.txt
+%endif
+
+%if 0%{?rhel}
+# In RHEL but too old
+sed -i -e '/typing-extensions/d' setup.py
+# Need to pip these
+sed -i -e '/sympy/d' setup.py
+sed -i -e '/fsspec/d' setup.py
 %endif
 
 # Release comes fully loaded with third party src
@@ -291,8 +315,8 @@ mv third_party/flatbuffers .
 mv third_party/pybind11 .
 
 %if %{with cuda}
-mv third_party/nvfuser .
 mv third_party/cudnn_frontend .
+mv third_party/cutlass .
 %endif
 
 %if %{with test}
@@ -308,8 +332,8 @@ mv flatbuffers third_party
 mv pybind11 third_party
 
 %if %{with cuda}
-mv nvfuser third_party
 mv cudnn_frontend third_party
+mv cutlass third_party
 %endif
 
 %if %{with test}
@@ -335,6 +359,33 @@ sed -i -e 's@string(APPEND CMAKE_CUDA_FLAGS " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX
 %endif
 
 %build
+
+#
+# Control the number of jobs
+#
+# The build can fail if too many threads exceed the physical memory
+# So count core and and memory and increase the build memory util the build succeeds
+#
+# Real cores, No hyperthreading
+COMPILE_JOBS=`cat /proc/cpuinfo | grep -m 1 'cpu cores' | awk '{ print $4 }'`
+if [ ${COMPILE_JOBS}x = x ]; then
+    COMPILE_JOBS=1
+fi
+# Take into account memmory usage per core, do not thrash real memory
+%if %{with cuda}
+BUILD_MEM=4
+%else
+BUILD_MEM=2
+%endif
+MEM_KB=0
+MEM_KB=`cat /proc/meminfo | grep MemTotal | awk '{ print $2 }'`
+MEM_MB=`eval "expr ${MEM_KB} / 1024"`
+MEM_GB=`eval "expr ${MEM_MB} / 1024"`
+COMPILE_JOBS_MEM=`eval "expr 1 + ${MEM_GB} / ${BUILD_MEM}"`
+if [ "$COMPILE_JOBS_MEM" -lt "$COMPILE_JOBS" ]; then
+    COMPILE_JOBS=$COMPILE_JOBS_MEM
+fi
+export MAX_JOBS=$COMPILE_JOBS
 
 # For debugging setup.py
 # export SETUPTOOLS_SCM_DEBUG=1
@@ -408,6 +459,7 @@ export USE_ROCM=OFF
 
 %if %{with cuda}
 export CUDACXX=/usr/local/cuda/bin/nvcc
+export CPLUS_INCLUDE_PATH=/usr/local/cuda/include
 export USE_CUDA=ON
 export USE_NCCL=OFF
 %else
@@ -503,6 +555,12 @@ sed -i -f br.sed devel.files
 %{python3_sitearch}/torch/lib/libcaffe2_nvrtc.so
 %{python3_sitearch}/torch/lib/libtorch_hip.so
 %endif
+%if %{with cuda}
+%{python3_sitearch}/torch/lib/libc10_cuda.so
+%{python3_sitearch}/torch/lib/libcaffe2_nvrtc.so
+%{python3_sitearch}/torch/lib/libtorch_cuda.so
+%{python3_sitearch}/torch/lib/libtorch_cuda_linalg.so
+%endif
 
 # misc
 %{python3_sitearch}/torch/utils/model_dump/{*.js,*.mjs,*.html}
@@ -510,8 +568,10 @@ sed -i -f br.sed devel.files
 %{python3_sitearch}/torchgen/packaged/autograd/{*.md,*.yaml}
 %if %{with gitcommit}
 %{python3_sitearch}/torch/_export/serde/schema.yaml
+%if 0%{?fedora}
 %{python3_sitearch}/torch/distributed/pipeline/sync/_balance/py.typed
 %{python3_sitearch}/torch/distributed/pipeline/sync/py.typed
+%endif
 %endif
 
 # egg
