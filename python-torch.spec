@@ -6,8 +6,8 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# The top of tree ~2/18/24
-%global commit0 372d078f361e726bb4ac0884ac334b04c58179ef
+# The top of tree ~2/22/24
+%global commit0 5c5b71b6eebae76d744261715231093e62f0d090
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 
 %global pypi_version 2.3.0
@@ -23,9 +23,13 @@
 #   /usr/lib64/python3.12/site-packages/torch/bin/test_api, test_lazy
 %bcond_with test
 
-# For testing rocm
-# Not viable on 2.1.2, use --with gitcommit
+%ifarch x86_64
+%if 0%{?fedora}
+%bcond_without rocm
+%else
 %bcond_with rocm
+%endif
+%endif
 
 # For testing openmp
 %bcond_without openmp
@@ -37,13 +41,9 @@
 %bcond_with distributed
 
 # For testing cuda
+%ifarch x86_64
 %bcond_with cuda
-# Which cuda ? Look at your /usr/local/cuda-<ver>, this is mine
-# Which has problems with 2.1.2 ..
-%global cuda_ver 12.3
-# Which arch ? Who knows, pick something yourself or go with native
-%global cuda_arch native
-
+%endif
 
 Name:           python-%{pypi_name}
 Version:        %{pypi_version}
@@ -74,6 +74,10 @@ Patch1:        0001-no-third_party-fmt.patch
 Patch2:        0001-no-third_party-FXdiv.patch
 Patch3:        0001-Stub-in-kineto-ActivityType.patch
 Patch5:        0001-disable-submodule-search.patch
+
+%if %{with caffe2}
+Patch6:        0001-reenable-foxi-linking.patch
+%endif
 
 %if %{with rocm}
 Patch100:      0001-cuda-hip-signatures.patch
@@ -137,11 +141,7 @@ BuildRequires:  ninja-build
 BuildRequires:  onnx-devel
 BuildRequires:  openblas-devel
 BuildRequires:  pocketfft-devel
-%if %{with caffe2}
-BuildRequires:  protobuf-lite-devel
-%else
 BuildRequires:  protobuf-devel
-%endif
 BuildRequires:  pthreadpool-devel
 BuildRequires:  psimd-devel
 BuildRequires:  python3-numpy
@@ -430,7 +430,7 @@ export USE_XNNPACK=ON
 %if %{with caffe2}
 export BUILD_CAFFE2=ON
 export INTERN_BUILD_MOBILE=OFF
-export USE_LITE_PROTO=ON
+export USE_LITE_PROTO=OFF
 %endif
 
 %if %{with distributed}
@@ -500,6 +500,11 @@ rm %{buildroot}%{python3_sitearch}/torch/cuda/error.py
 rm %{buildroot}%{python3_sitearch}/torch/cuda/__pycache__/error.*.pyc
 rm %{buildroot}%{python3_sitearch}/torch/include/ATen/cudnn/Exceptions.h
 
+%if %{with caffe2}
+# Remove test data
+rm -rf %{buildroot}%{python3_sitearch}/caffe2/python/serialized_test/data/*
+%endif
+
 # exec permission
 for f in `find %{buildroot}%{python3_sitearch} -name '*.py'`; do
     if [ ! -x $f ]; then
@@ -560,6 +565,11 @@ sed -i -f br.sed devel.files
 %{python3_sitearch}/torch/lib/libcaffe2_nvrtc.so
 %{python3_sitearch}/torch/lib/libtorch_cuda.so
 %{python3_sitearch}/torch/lib/libtorch_cuda_linalg.so
+%endif
+%if %{with caffe2}
+%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops.so
+%{python3_sitearch}/torch/lib/libcaffe2_observers.so
+%{python3_sitearch}/caffe2/python/caffe2_pybind11_state.cpython*.so
 %endif
 
 # misc

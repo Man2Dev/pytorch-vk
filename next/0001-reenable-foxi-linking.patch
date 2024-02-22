@@ -1,0 +1,25 @@
+From 58ccda271e8f51c3fa5b7518cf6ee52ce204fd37 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Thu, 22 Feb 2024 09:28:11 -0500
+Subject: [PATCH] reenable foxi linking
+
+---
+ cmake/Dependencies.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 42fbf80f6e8..bc3a2dc6fee 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -1604,7 +1604,7 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+     list(APPEND Caffe2_DEPENDENCY_LIBS onnx_proto onnx)
+   endif()
+ #  include_directories(${FOXI_INCLUDE_DIRS})
+-#  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
++  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
+   # Recover the build shared libs option.
+   set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
+ endif()
+-- 
+2.43.2
+
