@@ -567,9 +567,14 @@ sed -i -f br.sed devel.files
 %{python3_sitearch}/torch/lib/libtorch_cuda_linalg.so
 %endif
 %if %{with caffe2}
-%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops.so
 %{python3_sitearch}/torch/lib/libcaffe2_observers.so
 %{python3_sitearch}/caffe2/python/caffe2_pybind11_state.cpython*.so
+%if %{without rocm}
+%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops.so
+%else
+%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops_hip.so
+%{python3_sitearch}/caffe2/python/caffe2_pybind11_state_hip.cpython*.so
+%endif
 %endif
 
 # misc
