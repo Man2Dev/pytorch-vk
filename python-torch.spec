@@ -30,6 +30,8 @@
 %bcond_with rocm
 %endif
 %endif
+# hipblaslt is in development
+%bcond_with hipblaslt
 
 # For testing openmp
 %bcond_without openmp
@@ -80,10 +82,13 @@ Patch6:        0001-reenable-foxi-linking.patch
 %endif
 
 %if %{with rocm}
-Patch100:      0001-cuda-hip-signatures.patch
-Patch101:      0001-silence-an-assert.patch
-Patch102:      0001-can-not-use-with-c-files.patch
-Patch103:      0001-use-any-hip.patch
+# https://github.com/pytorch/pytorch/pull/120551
+Patch100:      0001-Optionally-use-hipblaslt.patch
+Patch101:      0001-cuda-hip-signatures.patch
+Patch102:      0001-silence-an-assert.patch
+Patch103:      0001-can-not-use-with-c-files.patch
+Patch104:      0001-use-any-hip.patch
+
 %endif
 
 %else
@@ -171,7 +176,9 @@ BuildRequires:  python3dist(sympy)
 
 %if %{with rocm}
 BuildRequires:  hipblas-devel
+%if %{with hipblaslt}
 BuildRequires:  hipblaslt-devel
+%endif
 BuildRequires:  hipcub-devel
 BuildRequires:  hipfft-devel
 BuildRequires:  hipsparse-devel
@@ -480,7 +487,7 @@ export BUILD_TEST=OFF
 # Adding pip to build requires does not fix
 #
 # See BZ 2244862
-%py3_build
+%py3_build 
 
 %install
 %if %{with rocm}
@@ -490,7 +497,7 @@ export ROCM_PATH=%{_prefix}
 export DEVICE_LIB_PATH=/usr/lib/clang/17/amdgcn/bitcode
 %endif
 
-%py3_install
+%py3_install 
 
 # empty files
 rm %{buildroot}%{python3_sitearch}/torch/py.typed
