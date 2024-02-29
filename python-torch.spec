@@ -32,12 +32,20 @@
 %endif
 # hipblaslt is in development
 %bcond_with hipblaslt
+# Which families gpu build for
+%global rocm_gpu_list gfx8 gfx9 gfx10 gfx11
+%global rocm_default_gpu default
+%bcond_without rocm_loop
 
 # For testing openmp
 %bcond_without openmp
 
 # For testing caffe2
+%if 0%{?fedora}
+%bcond_without caffe2
+%else
 %bcond_with caffe2
+%endif
 
 # For testing distributed
 %bcond_with distributed
@@ -243,6 +251,15 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 %description -n python3-%{pypi_name}-devel
 %{summary}
 
+%if %{with rocm}
+%package -n python3-%{pypi_name}-rocm
+Summary:        %{name} for ROCm
+Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
+
+%description -n python3-%{pypi_name}-rocm
+%{summary}
+%endif
+
 %if %{with test}
 %package -n python3-%{pypi_name}-test
 Summary:        Tests for %{name}
@@ -254,6 +271,7 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 
 
 %prep
+
 %if %{with gitcommit}
 %autosetup -p1 -n pytorch-%{commit0}
 
@@ -261,13 +279,6 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 rm -rf %{pypi_name}.egg-info
 # Overwrite with a git checkout of the pyproject.toml
 cp %{SOURCE100} .
-
-%if %{with rocm}
-# hipify
-./tools/amd_build/build_amd.py
-# Fedora installs to /usr/include, not /usr/include/rocm-core
-sed -i -e 's@rocm-core/rocm_version.h@rocm_version.h@' aten/src/ATen/hip/tunable/TunableGemm.h
-%endif
 
 %else
 %autosetup -p1 -n pytorch-v%{version}
@@ -360,6 +371,13 @@ rm caffe2/contrib/opencl/OpenCL/cl.hpp
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.h
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.hpp
 
+%if %{with rocm}
+# hipify
+./tools/amd_build/build_amd.py
+# Fedora installs to /usr/include, not /usr/include/rocm-core
+sed -i -e 's@rocm-core/rocm_version.h@rocm_version.h@' aten/src/ATen/hip/tunable/TunableGemm.h
+%endif
+
 %if %{with cuda}
 # build complains about not being able to build -pie without -fPIC
 sed -i -e 's@string(APPEND CMAKE_CUDA_FLAGS " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")@string(APPEND CMAKE_CUDA_FLAGS " -fPIC -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")@' CMakeLists.txt
@@ -406,20 +424,29 @@ export MAX_JOBS=$COMPILE_JOBS
 export CMAKE_EXE_LINKER_FLAGS=-pie
 
 export BUILD_CUSTOM_PROTOBUF=OFF
+export BUILD_NVFUSER=OFF
 export BUILD_SHARED_LIBS=ON
+export BUILD_TEST=OFF
 export CMAKE_BUILD_TYPE=RelWithDebInfo
 export CMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
 export CAFFE2_LINK_LOCAL_PROTOBUF=OFF
+export INTERN_BUILD_MOBILE=OFF
+export USE_DISTRIBUTED=OFF
+export USE_CUDA=OFF
 export USE_FBGEMM=OFF
 export USE_GOLD_LINKER=OFF
 export USE_ITT=OFF
 export USE_KINETO=OFF
 export USE_LITE_INTERPRETER_PROFILER=OFF
+export USE_LITE_PROTO=OFF
 export USE_MKLDNN=OFF
+export USE_NCCL=OFF
 export USE_NNPACK=OFF
 export USE_NUMPY=ON
+export USE_OPENMP=OFF
 export USE_PYTORCH_QNNPACK=OFF
 export USE_QNNPACK=OFF
+export USE_ROCM=OFF
 export USE_SYSTEM_CPUINFO=ON
 export USE_SYSTEM_SLEEF=ON
 export USE_SYSTEM_EIGEN_INSTALL=ON
@@ -436,47 +463,26 @@ export USE_XNNPACK=ON
 
 %if %{with caffe2}
 export BUILD_CAFFE2=ON
-export INTERN_BUILD_MOBILE=OFF
-export USE_LITE_PROTO=OFF
+%endif
+
+%if %{with cuda}
+%if %{without rocm}
+export CUDACXX=/usr/local/cuda/bin/nvcc
+export CPLUS_INCLUDE_PATH=/usr/local/cuda/include
+export USE_CUDA=ON
+%endif
 %endif
 
 %if %{with distributed}
 export USE_DISTRIBUTED=ON
-%else
-export USE_DISTRIBUTED=OFF
 %endif
-
 
 %if %{with openmp}
 export USE_OPENMP=ON
-%else
-export USE_OPENMP=OFF
-%endif
-
-%if %{with rocm}
-export USE_ROCM=ON
-export USE_NCCL=OFF
-export BUILD_NVFUSER=OFF
-export HIP_PATH=%{_prefix}
-export ROCM_PATH=%{_prefix}
-export DEVICE_LIB_PATH=/usr/lib/clang/17/amdgcn/bitcode
-%else
-export USE_ROCM=OFF
-%endif
-
-%if %{with cuda}
-export CUDACXX=/usr/local/cuda/bin/nvcc
-export CPLUS_INCLUDE_PATH=/usr/local/cuda/include
-export USE_CUDA=ON
-export USE_NCCL=OFF
-%else
-export USE_CUDA=OFF
 %endif
 
 %if %{with test}
 export BUILD_TEST=ON
-%else
-export BUILD_TEST=OFF
 %endif
 
 # Why we are using py3_ vs pyproject_
@@ -487,509 +493,95 @@ export BUILD_TEST=OFF
 # Adding pip to build requires does not fix
 #
 # See BZ 2244862
-%py3_build 
 
-%install
+
 %if %{with rocm}
+
 export USE_ROCM=ON
 export HIP_PATH=%{_prefix}
 export ROCM_PATH=%{_prefix}
-export DEVICE_LIB_PATH=/usr/lib/clang/17/amdgcn/bitcode
-%endif
+export DEVICE_LIB_PATH=%{clang_resource_dir}/amdgcn/bitcode
 
-%py3_install 
+gpu=%{rocm_default_gpu}
+module load rocm/$gpu
+export PYTORCH_ROCM_ARCH=$ROCM_GPUS
+%py3_build
+mv build build-${gpu}
+module purge
 
-# empty files
-rm %{buildroot}%{python3_sitearch}/torch/py.typed
-rm %{buildroot}%{python3_sitearch}/torch/ao/quantization/backend_config/observation_type.py
-rm %{buildroot}%{python3_sitearch}/torch/ao/quantization/backend_config/__pycache__/observation_type.*.pyc
-rm %{buildroot}%{python3_sitearch}/torch/cuda/error.py
-rm %{buildroot}%{python3_sitearch}/torch/cuda/__pycache__/error.*.pyc
-rm %{buildroot}%{python3_sitearch}/torch/include/ATen/cudnn/Exceptions.h
-
-%if %{with caffe2}
-# Remove test data
-rm -rf %{buildroot}%{python3_sitearch}/caffe2/python/serialized_test/data/*
-%endif
-
-# exec permission
-for f in `find %{buildroot}%{python3_sitearch} -name '*.py'`; do
-    if [ ! -x $f ]; then
-        sed -i '1{\@^#!/usr/bin@d}' $f
-    fi
+%if %{with rocm_loop}
+for gpu in %{rocm_gpu_list}
+do
+    module load rocm/$gpu
+    export PYTORCH_ROCM_ARCH=$ROCM_GPUS
+    %py3_build
+    mv build build-${gpu}
+    module purge
 done
+%endif
 
-# shebangs
-%py3_shebang_fix %{buildroot}%{python3_sitearch}
+%else
 
-# Programatically create the list of dirs
-echo "s|%{buildroot}%{python3_sitearch}|%%dir %%{python3_sitearch}|g" > br.sed
-find %{buildroot}%{python3_sitearch} -mindepth 1 -type d  > dirs.files
-sed -i -f br.sed dirs.files 
-cat dirs.files > main.files
+%py3_build
 
-# Similar for the python files
-find %{buildroot}%{python3_sitearch} -type f -name "*.py" -o -name "*.pyc" -o -name "*.pyi"  > py.files
-echo "s|%{buildroot}%{python3_sitearch}|%%{python3_sitearch}|g" > br.sed
-sed -i -f br.sed py.files
-cat py.files >> main.files
+%endif
 
-# devel files, headers and such
-find %{buildroot}%{python3_sitearch} -type f -name "*.h" -o -name "*.hpp" -o -name "*.cuh" -o -name "*.cpp" -o -name "*.cu" > devel.files
-sed -i -f br.sed devel.files
+%install
 
-#
-# Main package
-##% dir % {python3_sitearch}/torch*.egg-info
+%if %{with rocm}
 
-%files -n python3-%{pypi_name} -f main.files
+export USE_ROCM=ON
+export HIP_PATH=%{_prefix}
+export ROCM_PATH=%{_prefix}
+export DEVICE_LIB_PATH=%{clang_resource_dir}/amdgcn/bitcode
 
+gpu=%{rocm_default_gpu}
+module load rocm/$gpu
+export PYTORCH_ROCM_ARCH=$ROCM_GPUS
+mv build-${gpu} build
+%py3_install
+mv build build-${gpu}
+module purge
+
+%if %{with rocm_loop}
+for gpu in %{rocm_gpu_list}
+do
+    module load rocm/$gpu
+    export PYTORCH_ROCM_ARCH=$ROCM_GPUS
+    mv build-${gpu} build
+    # need to customize the install location, so replace py3_install
+    %{__python3} %{py_setup} %{?py_setup_args} install -O1 --skip-build --root %{buildroot} --prefix /usr/lib64/rocm/${gpu} %{?*}
+    rm -rfv %{buildroot}/usr/lib/rocm/${gpu}/bin/__pycache__
+    mv build build-${gpu}
+    module purge
+done
+%endif
+
+%else
+%py3_install
+
+%endif
+
+%files -n python3-%{pypi_name} 
 %license LICENSE
-%doc README.md
-
-# bins
+%doc README.md 
 %{_bindir}/convert-caffe2-to-onnx
 %{_bindir}/convert-onnx-to-caffe2
 %{_bindir}/torchrun
-%{python3_sitearch}/torch/bin/torch_shm_manager
-
-# libs
-%{python3_sitearch}/functorch/_C.cpython*.so
-%{python3_sitearch}/torch/_C.cpython*.so
-%{python3_sitearch}/torch/lib/libc10.so
-%{python3_sitearch}/torch/lib/libshm.so
-%{python3_sitearch}/torch/lib/libtorch.so
-%{python3_sitearch}/torch/lib/libtorch_cpu.so
-%{python3_sitearch}/torch/lib/libtorch_global_deps.so
-%{python3_sitearch}/torch/lib/libtorch_python.so
-%if %{with rocm}
-%{python3_sitearch}/torch/lib/libc10_hip.so
-%{python3_sitearch}/torch/lib/libcaffe2_nvrtc.so
-%{python3_sitearch}/torch/lib/libtorch_hip.so
-%endif
-%if %{with cuda}
-%{python3_sitearch}/torch/lib/libc10_cuda.so
-%{python3_sitearch}/torch/lib/libcaffe2_nvrtc.so
-%{python3_sitearch}/torch/lib/libtorch_cuda.so
-%{python3_sitearch}/torch/lib/libtorch_cuda_linalg.so
-%endif
+%{python3_sitearch}/%{pypi_name}
+%{python3_sitearch}/%{pypi_name}-*.egg-info
+%{python3_sitearch}/functorch
+%{python3_sitearch}/torchgen
 %if %{with caffe2}
-%{python3_sitearch}/torch/lib/libcaffe2_observers.so
-%{python3_sitearch}/caffe2/python/caffe2_pybind11_state.cpython*.so
-%if %{without rocm}
-%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops.so
-%else
-%{python3_sitearch}/torch/lib/libcaffe2_detectron_ops_hip.so
-%{python3_sitearch}/caffe2/python/caffe2_pybind11_state_hip.cpython*.so
+%{python3_sitearch}/caffe2
 %endif
+%if %{with rocm}
+%{_libdir}/rocm/gfx*/bin/*
+%{_libdir}/rocm/gfx*/lib64/*
 %endif
 
-# misc
-%{python3_sitearch}/torch/utils/model_dump/{*.js,*.mjs,*.html}
-%{python3_sitearch}/torchgen/packaged/ATen/native/*.yaml
-%{python3_sitearch}/torchgen/packaged/autograd/{*.md,*.yaml}
-%if %{with gitcommit}
-%{python3_sitearch}/torch/_export/serde/schema.yaml
-%if 0%{?fedora}
-%{python3_sitearch}/torch/distributed/pipeline/sync/_balance/py.typed
-%{python3_sitearch}/torch/distributed/pipeline/sync/py.typed
-%endif
-%endif
 
-# egg
-%{python3_sitearch}/torch*.egg-info/*
-
-# excludes
-# bazel build cruft
-%exclude %{python3_sitearch}/torchgen/packaged/autograd/{BUILD.bazel,build.bzl}
-
-#
-# devel package
-#
-%files -n python3-%{pypi_name}-devel -f devel.files
-
-# devel cmake
-%{python3_sitearch}/torch/share/cmake/{ATen,Caffe2,Torch}/*.cmake
-%{python3_sitearch}/torch/share/cmake/Caffe2/public/*.cmake
-%{python3_sitearch}/torch/share/cmake/Caffe2/Modules_CUDA_fix/*.cmake
-%{python3_sitearch}/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/*.cmake
-%{python3_sitearch}/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/FindCUDA/*.cmake
-
-# devel misc
-%{python3_sitearch}/torchgen/packaged/ATen/templates/RegisterDispatchDefinitions.ini
-%{python3_sitearch}/torchgen/packaged/autograd/templates/annotated_fn_args.py.in
-
-%if %{with test}
-%files -n python3-%{pypi_name}-test
-
-# test bins
-%{python3_sitearch}/torch/bin/test_api
-%{python3_sitearch}/torch/bin/test_edge_op_registration
-%{python3_sitearch}/torch/bin/test_jit
-%{python3_sitearch}/torch/bin/test_lazy
-%{python3_sitearch}/torch/bin/test_tensorexpr
-%{python3_sitearch}/torch/bin/tutorial_tensorexpr
-
-# test libs
-# Unversioned - not ment for release
-%{python3_sitearch}/torch/lib/libbackend_with_compiler.so
-%{python3_sitearch}/torch/lib/libjitbackend_test.so
-%{python3_sitearch}/torch/lib/libtorchbind_test.so
-   
-# tests
-%{python3_sitearch}/torch/test/*
-
-%endif
-
-#
-# License Details
-# Main license BSD 3-Clause
-#
-# Apache-2.0
-# android/libs/fbjni/LICENSE
-# android/libs/fbjni/CMakeLists.txt
-# android/libs/fbjni/build.gradle
-# android/libs/fbjni/cxx/fbjni/ByteBuffer.cpp
-# android/libs/fbjni/cxx/fbjni/ByteBuffer.h
-# android/libs/fbjni/cxx/fbjni/Context.h
-# android/libs/fbjni/cxx/fbjni/File.h
-# android/libs/fbjni/cxx/fbjni/JThread.h
-# android/libs/fbjni/cxx/fbjni/NativeRunnable.h
-# android/libs/fbjni/cxx/fbjni/OnLoad.cpp
-# android/libs/fbjni/cxx/fbjni/ReadableByteChannel.cpp
-# android/libs/fbjni/cxx/fbjni/ReadableByteChannel.h
-# android/libs/fbjni/cxx/fbjni/detail/Boxed.h
-# android/libs/fbjni/cxx/fbjni/detail/Common.h
-# android/libs/fbjni/cxx/fbjni/detail/CoreClasses-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/CoreClasses.h
-# android/libs/fbjni/cxx/fbjni/detail/Environment.cpp
-# android/libs/fbjni/cxx/fbjni/detail/Environment.h
-# android/libs/fbjni/cxx/fbjni/detail/Exceptions.cpp
-# android/libs/fbjni/cxx/fbjni/detail/Exceptions.h
-# android/libs/fbjni/cxx/fbjni/detail/FbjniApi.h
-# android/libs/fbjni/cxx/fbjni/detail/Hybrid.cpp
-# android/libs/fbjni/cxx/fbjni/detail/Hybrid.h
-# android/libs/fbjni/cxx/fbjni/detail/Iterator-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/Iterator.h
-# android/libs/fbjni/cxx/fbjni/detail/JWeakReference.h
-# android/libs/fbjni/cxx/fbjni/detail/Log.h
-# android/libs/fbjni/cxx/fbjni/detail/Meta-forward.h
-# android/libs/fbjni/cxx/fbjni/detail/Meta-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/Meta.cpp
-# android/libs/fbjni/cxx/fbjni/detail/Meta.h
-# android/libs/fbjni/cxx/fbjni/detail/MetaConvert.h
-# android/libs/fbjni/cxx/fbjni/detail/ReferenceAllocators-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/ReferenceAllocators.h
-# android/libs/fbjni/cxx/fbjni/detail/References-forward.h
-# android/libs/fbjni/cxx/fbjni/detail/References-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/References.cpp
-# android/libs/fbjni/cxx/fbjni/detail/References.h
-# android/libs/fbjni/cxx/fbjni/detail/Registration-inl.h
-# android/libs/fbjni/cxx/fbjni/detail/Registration.h
-# android/libs/fbjni/cxx/fbjni/detail/SimpleFixedString.h
-# android/libs/fbjni/cxx/fbjni/detail/TypeTraits.h
-# android/libs/fbjni/cxx/fbjni/detail/utf8.cpp
-# android/libs/fbjni/cxx/fbjni/detail/utf8.h
-# android/libs/fbjni/cxx/fbjni/fbjni.cpp
-# android/libs/fbjni/cxx/fbjni/fbjni.h
-# android/libs/fbjni/cxx/lyra/cxa_throw.cpp
-# android/libs/fbjni/cxx/lyra/lyra.cpp
-# android/libs/fbjni/cxx/lyra/lyra.h
-# android/libs/fbjni/cxx/lyra/lyra_breakpad.cpp
-# android/libs/fbjni/cxx/lyra/lyra_exceptions.cpp
-# android/libs/fbjni/cxx/lyra/lyra_exceptions.h
-# android/libs/fbjni/gradle.properties
-# android/libs/fbjni/gradle/android-tasks.gradle
-# android/libs/fbjni/gradle/release.gradle
-# android/libs/fbjni/gradlew
-# android/libs/fbjni/gradlew.bat
-# android/libs/fbjni/host.gradle
-# android/libs/fbjni/java/com/facebook/jni/CppException.java
-# android/libs/fbjni/java/com/facebook/jni/CppSystemErrorException.java
-# android/libs/fbjni/java/com/facebook/jni/DestructorThread.java
-# android/libs/fbjni/java/com/facebook/jni/HybridClassBase.java
-# android/libs/fbjni/java/com/facebook/jni/HybridData.java
-# android/libs/fbjni/java/com/facebook/jni/IteratorHelper.java
-# android/libs/fbjni/java/com/facebook/jni/MapIteratorHelper.java
-# android/libs/fbjni/java/com/facebook/jni/NativeRunnable.java
-# android/libs/fbjni/java/com/facebook/jni/ThreadScopeSupport.java
-# android/libs/fbjni/java/com/facebook/jni/UnknownCppException.java
-# android/libs/fbjni/java/com/facebook/jni/annotations/DoNotStrip.java
-# android/libs/fbjni/scripts/android-setup.sh
-# android/libs/fbjni/scripts/run-host-tests.sh
-# android/libs/fbjni/settings.gradle
-# android/libs/fbjni/test/BaseFBJniTests.java
-# android/libs/fbjni/test/ByteBufferTests.java
-# android/libs/fbjni/test/DocTests.java
-# android/libs/fbjni/test/FBJniTests.java
-# android/libs/fbjni/test/HybridTests.java
-# android/libs/fbjni/test/IteratorTests.java
-# android/libs/fbjni/test/PrimitiveArrayTests.java
-# android/libs/fbjni/test/ReadableByteChannelTests.java
-# android/libs/fbjni/test/jni/CMakeLists.txt
-# android/libs/fbjni/test/jni/byte_buffer_tests.cpp
-# android/libs/fbjni/test/jni/doc_tests.cpp
-# android/libs/fbjni/test/jni/expect.h
-# android/libs/fbjni/test/jni/fbjni_onload.cpp
-# android/libs/fbjni/test/jni/fbjni_tests.cpp
-# android/libs/fbjni/test/jni/hybrid_tests.cpp
-# android/libs/fbjni/test/jni/inter_dso_exception_test_1/Test.cpp
-# android/libs/fbjni/test/jni/inter_dso_exception_test_1/Test.h
-# android/libs/fbjni/test/jni/inter_dso_exception_test_2/Test.cpp
-# android/libs/fbjni/test/jni/inter_dso_exception_test_2/Test.h
-# android/libs/fbjni/test/jni/iterator_tests.cpp
-# android/libs/fbjni/test/jni/modified_utf8_test.cpp
-# android/libs/fbjni/test/jni/no_rtti.cpp
-# android/libs/fbjni/test/jni/no_rtti.h
-# android/libs/fbjni/test/jni/primitive_array_tests.cpp
-# android/libs/fbjni/test/jni/readable_byte_channel_tests.cpp
-# android/libs/fbjni/test/jni/simple_fixed_string_tests.cpp
-# android/libs/fbjni/test/jni/utf16toUTF8_test.cpp
-# android/pytorch_android/host/build.gradle
-# aten/src/ATen/cuda/llvm_basic.cpp
-# aten/src/ATen/cuda/llvm_complex.cpp
-# aten/src/ATen/native/quantized/cpu/qnnpack/confu.yaml
-# aten/src/ATen/native/quantized/cpu/qnnpack/src/requantization/gemmlowp-neon.c
-# aten/src/ATen/native/quantized/cpu/qnnpack/src/requantization/gemmlowp-scalar.h
-# aten/src/ATen/native/quantized/cpu/qnnpack/src/requantization/gemmlowp-sse.h
-# aten/src/ATen/nnapi/codegen.py
-# aten/src/ATen/nnapi/NeuralNetworks.h
-# aten/src/ATen/nnapi/nnapi_wrapper.cpp
-# aten/src/ATen/nnapi/nnapi_wrapper.h
-# binaries/benchmark_args.h
-# binaries/benchmark_helper.cc
-# binaries/benchmark_helper.h
-# binaries/compare_models_torch.cc
-# binaries/convert_and_benchmark.cc
-# binaries/convert_caffe_image_db.cc
-# binaries/convert_db.cc
-# binaries/convert_encoded_to_raw_leveldb.cc
-# binaries/convert_image_to_tensor.cc
-# binaries/core_overhead_benchmark.cc
-# binaries/core_overhead_benchmark_gpu.cc
-# binaries/db_throughput.cc
-# binaries/dump_operator_names.cc
-# binaries/inspect_gpu.cc
-# binaries/load_benchmark_torch.cc
-# binaries/make_cifar_db.cc
-# binaries/make_image_db.cc
-# binaries/make_mnist_db.cc
-# binaries/optimize_for_mobile.cc
-# binaries/parallel_info.cc
-# binaries/predictor_verifier.cc
-# binaries/print_core_object_sizes_gpu.cc
-# binaries/print_registered_core_operators.cc
-# binaries/run_plan.cc
-# binaries/run_plan_mpi.cc
-# binaries/speed_benchmark.cc
-# binaries/speed_benchmark_torch.cc
-# binaries/split_db.cc
-# binaries/tsv_2_proto.cc
-# binaries/tutorial_blob.cc
-# binaries/zmq_feeder.cc
-# c10/test/util/small_vector_test.cpp
-# c10/util/FunctionRef.h
-# c10/util/SmallVector.cpp
-# c10/util/SmallVector.h
-# c10/util/llvmMathExtras.h
-# c10/util/sparse_bitset.h
-# caffe2/contrib/aten/gen_op.py
-# caffe2/contrib/fakelowp/fp16_fc_acc_op.cc
-# caffe2/contrib/fakelowp/fp16_fc_acc_op.h
-# caffe2/contrib/gloo/allgather_ops.cc
-# caffe2/contrib/gloo/allgather_ops.h
-# caffe2/contrib/gloo/reduce_scatter_ops.cc
-# caffe2/contrib/gloo/reduce_scatter_ops.h
-# caffe2/core/hip/common_miopen.h
-# caffe2/core/hip/common_miopen.hip
-# caffe2/core/net_async_tracing.cc
-# caffe2/core/net_async_tracing.h
-# caffe2/core/net_async_tracing_test.cc
-# caffe2/experiments/operators/fully_connected_op_decomposition.cc
-# caffe2/experiments/operators/fully_connected_op_decomposition.h
-# caffe2/experiments/operators/fully_connected_op_decomposition_gpu.cc
-# caffe2/experiments/operators/fully_connected_op_prune.cc
-# caffe2/experiments/operators/fully_connected_op_prune.h
-# caffe2/experiments/operators/fully_connected_op_sparse.cc
-# caffe2/experiments/operators/fully_connected_op_sparse.h
-# caffe2/experiments/operators/funhash_op.cc
-# caffe2/experiments/operators/funhash_op.h
-# caffe2/experiments/operators/sparse_funhash_op.cc
-# caffe2/experiments/operators/sparse_funhash_op.h
-# caffe2/experiments/operators/sparse_matrix_reshape_op.cc
-# caffe2/experiments/operators/sparse_matrix_reshape_op.h
-# caffe2/experiments/operators/tt_contraction_op.cc
-# caffe2/experiments/operators/tt_contraction_op.h
-# caffe2/experiments/operators/tt_contraction_op_gpu.cc
-# caffe2/experiments/operators/tt_pad_op.cc
-# caffe2/experiments/operators/tt_pad_op.h
-# caffe2/experiments/python/SparseTransformer.py
-# caffe2/experiments/python/convnet_benchmarks.py
-# caffe2/experiments/python/device_reduce_sum_bench.py
-# caffe2/experiments/python/funhash_op_test.py
-# caffe2/experiments/python/net_construct_bench.py
-# caffe2/experiments/python/sparse_funhash_op_test.py
-# caffe2/experiments/python/sparse_reshape_op_test.py
-# caffe2/experiments/python/tt_contraction_op_test.py
-# caffe2/experiments/python/tt_pad_op_test.py
-# caffe2/mobile/contrib/libvulkan-stub/include/vulkan/vk_platform.h
-# caffe2/mobile/contrib/libvulkan-stub/include/vulkan/vulkan.h
-# caffe2/mobile/contrib/nnapi/NeuralNetworks.h
-# caffe2/mobile/contrib/nnapi/dlnnapi.c
-# caffe2/mobile/contrib/nnapi/nnapi_benchmark.cc
-# caffe2/observers/profile_observer.cc
-# caffe2/observers/profile_observer.h
-# caffe2/operators/hip/conv_op_miopen.hip
-# caffe2/operators/hip/local_response_normalization_op_miopen.hip
-# caffe2/operators/hip/pool_op_miopen.hip
-# caffe2/operators/hip/spatial_batch_norm_op_miopen.hip
-# caffe2/operators/quantized/int8_utils.h
-# caffe2/operators/stump_func_op.cc
-# caffe2/operators/stump_func_op.cu
-# caffe2/operators/stump_func_op.h
-# caffe2/operators/unique_ops.cc
-# caffe2/operators/unique_ops.cu
-# caffe2/operators/unique_ops.h
-# caffe2/operators/upsample_op.cc
-# caffe2/operators/upsample_op.h
-# caffe2/opt/fusion.h
-# caffe2/python/layers/label_smooth.py
-# caffe2/python/mint/static/css/simple-sidebar.css
-# caffe2/python/modeling/get_entry_from_blobs.py
-# caffe2/python/modeling/get_entry_from_blobs_test.py
-# caffe2/python/modeling/gradient_clipping_test.py
-# caffe2/python/operator_test/unique_ops_test.py
-# caffe2/python/operator_test/upsample_op_test.py
-# caffe2/python/operator_test/weight_scale_test.py
-# caffe2/python/pybind_state_int8.cc
-# caffe2/python/transformations.py
-# caffe2/python/transformations_test.py
-# caffe2/quantization/server/batch_matmul_dnnlowp_op.cc
-# caffe2/quantization/server/batch_matmul_dnnlowp_op.h
-# caffe2/quantization/server/compute_equalization_scale_test.py
-# caffe2/quantization/server/elementwise_linear_dnnlowp_op.cc
-# caffe2/quantization/server/elementwise_linear_dnnlowp_op.h
-# caffe2/quantization/server/elementwise_sum_relu_op.cc
-# caffe2/quantization/server/fb_fc_packed_op.cc
-# caffe2/quantization/server/fb_fc_packed_op.h
-# caffe2/quantization/server/fbgemm_fp16_pack_op.cc
-# caffe2/quantization/server/fbgemm_fp16_pack_op.h
-# caffe2/quantization/server/fully_connected_fake_lowp_op.cc
-# caffe2/quantization/server/fully_connected_fake_lowp_op.h
-# caffe2/quantization/server/int8_gen_quant_params_min_max_test.py
-# caffe2/quantization/server/int8_gen_quant_params_test.py
-# caffe2/quantization/server/int8_quant_scheme_blob_fill_test.py
-# caffe2/quantization/server/spatial_batch_norm_relu_op.cc
-# caffe2/sgd/weight_scale_op.cc
-# caffe2/sgd/weight_scale_op.h
-# caffe2/utils/bench_utils.h
-# functorch/examples/maml_omniglot/maml-omniglot-higher.py
-# functorch/examples/maml_omniglot/maml-omniglot-ptonly.py
-# functorch/examples/maml_omniglot/maml-omniglot-transforms.py
-# functorch/examples/maml_omniglot/support/omniglot_loaders.py
-# modules/detectron/group_spatial_softmax_op.cc
-# modules/detectron/group_spatial_softmax_op.cu
-# modules/detectron/group_spatial_softmax_op.h
-# modules/detectron/ps_roi_pool_op.cc
-# modules/detectron/ps_roi_pool_op.h
-# modules/detectron/roi_pool_f_op.cc
-# modules/detectron/roi_pool_f_op.cu
-# modules/detectron/roi_pool_f_op.h
-# modules/detectron/sample_as_op.cc
-# modules/detectron/sample_as_op.cu
-# modules/detectron/sample_as_op.h
-# modules/detectron/select_smooth_l1_loss_op.cc
-# modules/detectron/select_smooth_l1_loss_op.cu
-# modules/detectron/select_smooth_l1_loss_op.h
-# modules/detectron/sigmoid_cross_entropy_loss_op.cc
-# modules/detectron/sigmoid_cross_entropy_loss_op.cu
-# modules/detectron/sigmoid_cross_entropy_loss_op.h
-# modules/detectron/sigmoid_focal_loss_op.cc
-# modules/detectron/sigmoid_focal_loss_op.cu
-# modules/detectron/sigmoid_focal_loss_op.h
-# modules/detectron/smooth_l1_loss_op.cc
-# modules/detectron/smooth_l1_loss_op.cu
-# modules/detectron/smooth_l1_loss_op.h
-# modules/detectron/softmax_focal_loss_op.cc
-# modules/detectron/softmax_focal_loss_op.cu
-# modules/detectron/softmax_focal_loss_op.h
-# modules/detectron/spatial_narrow_as_op.cc
-# modules/detectron/spatial_narrow_as_op.cu
-# modules/detectron/spatial_narrow_as_op.h
-# modules/detectron/upsample_nearest_op.cc
-# modules/detectron/upsample_nearest_op.h
-# modules/module_test/module_test_dynamic.cc
-# modules/rocksdb/rocksdb.cc
-# scripts/apache_header.txt
-# scripts/apache_python.txt
-# torch/distributions/lkj_cholesky.py
-#
-# Apache 2.0 AND BSD 2-Clause
-# caffe2/operators/deform_conv_op.cu
-#
-# Apache 2.0 AND BSD 2-Clause AND MIT
-# modules/detectron/ps_roi_pool_op.cu
-#
-# Apache 2.0 AND BSD 2-Clause
-# modules/detectron/upsample_nearest_op.cu
-#
-# BSD 0-Clause
-# torch/csrc/utils/pythoncapi_compat.h
-#
-# BSD 2-Clause
-# aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/LICENSE
-# caffe2/image/transform_gpu.cu
-# caffe2/image/transform_gpu.h
-#
-# BSL-1.0
-# c10/util/flat_hash_map.h
-# c10/util/hash.h
-# c10/util/Optional.h
-# c10/util/order_preserving_flat_hash_map.h
-# c10/util/strong_type.h
-# c10/util/variant.h
-#
-# GPL-3.0-or-later AND MIT
-# c10/util/reverse_iterator.h
-#
-# Khronos
-# These files are for OpenCL, an unused option
-# Replace them later, as-needed with the opencl-headers.rpm
-#
-# caffe2/contrib/opencl/OpenCL/cl.hpp
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl.h
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl.hpp
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl_ext.h
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl_gl.h
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl_gl_ext.h
-# caffe2/mobile/contrib/libopencl-stub/include/CL/cl_platform.h
-# caffe2/mobile/contrib/libopencl-stub/include/CL/opencl.h
-#
-# MIT
-# android/libs/fbjni/googletest-CMakeLists.txt.in
-# c10/util/BFloat16-math.h
-# caffe2/mobile/contrib/libvulkan-stub/include/libvulkan-stub.h
-# caffe2/mobile/contrib/libvulkan-stub/src/libvulkan-stub.c
-# caffe2/onnx/torch_ops/defs.cc
-# cmake/Modules_CUDA_fix/upstream/FindCUDA/make2cmake.cmake
-# cmake/Modules_CUDA_fix/upstream/FindCUDA/parse_cubin.cmake
-# cmake/Modules_CUDA_fix/upstream/FindCUDA/run_nvcc.cmake
-# functorch/einops/_parsing.py
-# test/functorch/test_parsing.py
-# test/functorch/test_rearrange.py
-# third_party/miniz-2.1.0/LICENSE
-# third_party/miniz-2.1.0/miniz.c
-# tools/coverage_plugins_package/setup.py
-# torch/_appdirs.py
-# torch/utils/hipify/hipify_python.py
-#
-# Public Domain
-# caffe2/mobile/contrib/libopencl-stub/LICENSE
-# caffe2/utils/murmur_hash3.cc
-# caffe2/utils/murmur_hash3.h
-#
-# Zlib
-# aten/src/ATen/native/cpu/avx_mathfun.h
+# See license.txt for license details
 
 %changelog
 * Fri Jan 26 2024 Fedora Release Engineering <releng@fedoraproject.org> - 2.1.2-3
