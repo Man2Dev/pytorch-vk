@@ -6,8 +6,8 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# The top of tree ~2/22/24
-%global commit0 5c5b71b6eebae76d744261715231093e62f0d090
+# The top of tree ~2/28/24
+%global commit0 3cfed0122829540444911c271ce5480832ea3526
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 
 %global pypi_version 2.3.0
@@ -40,9 +40,15 @@
 # For testing openmp
 %bcond_without openmp
 
+%bcond_with foxi
 # For testing caffe2
 %if 0%{?fedora}
+# need foxi-devel
+%if %{with foxi}
 %bcond_without caffe2
+%else
+%bcond_with caffe2
+%endif
 %else
 %bcond_with caffe2
 %endif
@@ -182,23 +188,33 @@ BuildRequires:  python3dist(fsspec)
 BuildRequires:  python3dist(sympy)
 %endif
 
+%if %{with openmp}
+BuildRequires: libomp-devel
+%endif
+
 %if %{with rocm}
+BuildRequires:  compiler-rt
 BuildRequires:  hipblas-devel
 %if %{with hipblaslt}
 BuildRequires:  hipblaslt-devel
 %endif
 BuildRequires:  hipcub-devel
 BuildRequires:  hipfft-devel
+BuildRequires:  hiprand-devel
 BuildRequires:  hipsparse-devel
 BuildRequires:  hipsolver-devel
+BuildRequires:  lld
 BuildRequires:  miopen-devel
 BuildRequires:  rocblas-devel
+BuildRequires:  rocrand-devel
+BuildRequires:  rocfft-devel
 %if %{with distributed}
 BuildRequires:  rccl-devel
 %endif
 BuildRequires:  rocprim-devel
 BuildRequires:  rocm-cmake
 BuildRequires:  rocm-comgr-devel
+BuildRequires:  rocm-core-devel
 BuildRequires:  rocm-hip-devel
 BuildRequires:  rocm-runtime-devel
 BuildRequires:  rocm-rpm-macros
@@ -208,8 +224,10 @@ BuildRequires:  rocthrust-devel
 Requires:       rocm-rpm-macros-modules
 %endif
 
+%if %{with foxi}
 %if %{with caffe2}
 BuildRequires:  foxi-devel
+%endif
 %endif
 
 %if %{with test}
