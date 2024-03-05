@@ -65,7 +65,7 @@ Name:           python-%{pypi_name}
 Version:        %{pypi_version}
 Release:        %autorelease
 Summary:        PyTorch AI/ML framework
-# See below for details
+# See license.txt for license details
 License:        BSD-3-Clause AND BSD-2-Clause AND 0BSD AND Apache-2.0 AND MIT AND BSL-1.0 AND GPL-3.0-or-later AND Zlib
 
 URL:            https://pytorch.org/
@@ -580,6 +580,10 @@ done
 
 %endif
 
+# rm empty files
+find %{buildroot} -type f -empty -delete
+
+
 %files -n python3-%{pypi_name} 
 %license LICENSE
 %doc README.md 
@@ -599,7 +603,6 @@ done
 %endif
 
 
-# See license.txt for license details
 
 %changelog
 %autochangelog
