@@ -6,8 +6,8 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# The top of tree ~2/28/24
-%global commit0 3cfed0122829540444911c271ce5480832ea3526
+# The top of tree ~3/7/24
+%global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 
 %global pypi_version 2.3.0
@@ -25,7 +25,7 @@
 
 %ifarch x86_64
 %if 0%{?fedora}
-%bcond_without rocm
+%bcond_with rocm
 %else
 %bcond_with rocm
 %endif
@@ -144,7 +144,6 @@ ExclusiveArch:  x86_64 aarch64
 %global _lto_cflags %nil
 %endif
 
-BuildRequires:  clang-devel
 BuildRequires:  cmake
 BuildRequires:  cpuinfo-devel
 BuildRequires:  eigen3-devel
@@ -169,7 +168,7 @@ BuildRequires:  python3-typing-extensions
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
 %if %{with gitcommit}
-BuildRequires:  xnnpack-devel = 0.0^git20231127.d9cce34
+BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
 %else
 BuildRequires:  xnnpack-devel = 0.0^git20221221.51a9875
 %endif
