@@ -79,8 +79,10 @@ Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.
 Source2:        https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz
 
 %if %{with cuda}
-Source10:       https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v1.0.3.tar.gz
-Source11:       https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.3.0.tar.gz
+%global cuf_ver 1.1.2
+Source10:       https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v%{cuf_ver}.tar.gz
+%global cul_ver 3.4.1
+Source11:       https://github.com/NVIDIA/cutlass/archive/refs/tags/v%{cul_ver}.tar.gz
 %endif
 
 %if %{with gitcommit}
@@ -310,9 +312,9 @@ cp -r pybind11-2.11.1/* third_party/pybind11/
 
 %if %{with cuda}
 tar xf %{SOURCE10}
-cp -r cudnn-frontend-1.0.3/* third_party/cudnn_frontend/
+cp -r cudnn-frontend-%{cuf_ver}/* third_party/cudnn_frontend/
 tar xf %{SOURCE11}
-cp -r cutlass-3.3.0/* third_party/cutlass/
+cp -r cutlass-%{cul_ver}/* third_party/cutlass/
 %endif
 
 %if %{with opencv}
