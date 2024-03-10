@@ -581,8 +581,7 @@ done
 
 %endif
 
-# rm empty files
-find %{buildroot} -type f -empty -delete
+# Do not remote the empty files
 
 
 %files -n python3-%{pypi_name} 
