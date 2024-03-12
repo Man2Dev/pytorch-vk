@@ -4,17 +4,17 @@
 %global forgeurl https://github.com/pytorch/pytorch
 
 # So pre releases can be tried
-%bcond_without gitcommit
+%bcond_with gitcommit
 %if %{with gitcommit}
-# The top of tree ~3/7/24
 %global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-
-%global pypi_version 2.3.0
+%global date0 20240307
 %else
-%global pypi_version 2.1.2
-
+%global commit0 975d4284250170602db60adfda5eb1664a3b8acc
+%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
+%global date0 20240307
 %endif
+%global pypi_version 2.3.0
 
 # For -test subpackage
 # suitable only for local testing
@@ -36,9 +36,6 @@
 %global rocm_gpu_list gfx8 gfx9 gfx10 gfx11
 %global rocm_default_gpu default
 %bcond_without rocm_loop
-
-# For testing openmp
-%bcond_without openmp
 
 %bcond_with foxi
 # For testing caffe2
@@ -62,7 +59,7 @@
 %endif
 
 Name:           python-%{pypi_name}
-Version:        %{pypi_version}
+Version:        %{pypi_version}^git%{date0}.%{shortcommit0}
 Release:        %autorelease
 Summary:        PyTorch AI/ML framework
 # See license.txt for license details
@@ -73,7 +70,8 @@ URL:            https://pytorch.org/
 Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
 Source100:        pyproject.toml
 %else
-Source0:        %{forgeurl}/releases/download/v%{version}/pytorch-v%{version}.tar.gz
+Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
+Source100:        pyproject.toml
 %endif
 Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
 Source2:        https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz
@@ -84,8 +82,6 @@ Source10:       https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v%{cu
 %global cul_ver 3.4.1
 Source11:       https://github.com/NVIDIA/cutlass/archive/refs/tags/v%{cul_ver}.tar.gz
 %endif
-
-%if %{with gitcommit}
 
 Patch0:        0001-no-third_party-foxi.patch
 Patch1:        0001-no-third_party-fmt.patch
@@ -104,37 +100,6 @@ Patch101:      0001-cuda-hip-signatures.patch
 Patch102:      0001-silence-an-assert.patch
 Patch103:      0001-can-not-use-with-c-files.patch
 Patch104:      0001-use-any-hip.patch
-
-%endif
-
-%else
-# Misc cmake changes that would be difficult to upstream
-# * Use the system fmt
-# * Remove foxi use
-# * Remove warnings/errors for clang 17
-# * fxdiv is not a library on Fedora
-Patch0:         0001-Prepare-pytorch-cmake-for-fedora.patch
-# https://github.com/pytorch/pytorch/pull/111048
-Patch2:         0003-Stub-in-kineto-ActivityType.patch
-# PyTorch has not fully baked 3.12 support because 3.12 is so new
-Patch3:         0004-torch-python-3.12-changes.patch
-# Short circuit looking for things that can not be downloade by mock
-Patch4:         0005-disable-submodule-search.patch
-# libtorch_python.so: undefined symbols: Py*
-Patch6:         0001-python-torch-link-with-python.patch
-# E: unused-direct-shlib-dependency libshm.so.2.1.0 libtorch.so.2.1
-# turn on as-needed globally
-Patch7:         0001-python-torch-remove-ubuntu-specific-linking.patch
-# Tries to use git and is confused by tarball
-Patch8:         0001-torch-sane-version.patch
-# libtorch is a wrapper so turn off as-needed locally
-# resolves this rpmlint
-# E: shared-library-without-dependency-information libtorch.so.2.1.0
-# causes these
-# E: unused-direct-shlib-dependency libtorch.so.2.1.0 libtorch_cpu.so.2.1
-# etc.
-# As a wrapper library, this should be the expected behavior.
-Patch9:         0001-disable-as-needed-for-libtorch.patch
 %endif
 
 # Limit to these because they are well behaved with clang
@@ -159,6 +124,7 @@ BuildRequires:  gloo-devel
 %endif
 BuildRequires:  ninja-build
 BuildRequires:  onnx-devel
+BuildRequires:  libomp-devel
 BuildRequires:  openblas-devel
 BuildRequires:  pocketfft-devel
 BuildRequires:  protobuf-devel
@@ -169,11 +135,7 @@ BuildRequires:  python3-pyyaml
 BuildRequires:  python3-typing-extensions
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
-%if %{with gitcommit}
 BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
-%else
-BuildRequires:  xnnpack-devel = 0.0^git20221221.51a9875
-%endif
 
 BuildRequires:  python3-devel
 BuildRequires:  python3dist(filelock)
@@ -189,12 +151,7 @@ BuildRequires:  python3dist(fsspec)
 BuildRequires:  python3dist(sympy)
 %endif
 
-%if %{with openmp}
-BuildRequires: libomp-devel
-%endif
-
 %if %{with rocm}
-BuildRequires:  compiler-rt
 BuildRequires:  hipblas-devel
 %if %{with hipblaslt}
 BuildRequires:  hipblaslt-devel
@@ -204,7 +161,6 @@ BuildRequires:  hipfft-devel
 BuildRequires:  hiprand-devel
 BuildRequires:  hipsparse-devel
 BuildRequires:  hipsolver-devel
-BuildRequires:  lld
 BuildRequires:  miopen-devel
 BuildRequires:  rocblas-devel
 BuildRequires:  rocrand-devel
@@ -291,18 +247,12 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 
 %prep
 
-%if %{with gitcommit}
 %autosetup -p1 -n pytorch-%{commit0}
 
 # Remove bundled egg-info
 rm -rf %{pypi_name}.egg-info
 # Overwrite with a git checkout of the pyproject.toml
 cp %{SOURCE100} .
-
-%else
-%autosetup -p1 -n pytorch-v%{version}
-
-%endif
 
 tar xf %{SOURCE1}
 cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
@@ -462,7 +412,7 @@ export USE_MKLDNN=OFF
 export USE_NCCL=OFF
 export USE_NNPACK=OFF
 export USE_NUMPY=ON
-export USE_OPENMP=OFF
+export USE_OPENMP=ON
 export USE_PYTORCH_QNNPACK=OFF
 export USE_QNNPACK=OFF
 export USE_ROCM=OFF
@@ -494,10 +444,6 @@ export USE_CUDA=ON
 
 %if %{with distributed}
 export USE_DISTRIBUTED=ON
-%endif
-
-%if %{with openmp}
-export USE_OPENMP=ON
 %endif
 
 %if %{with test}
@@ -601,8 +547,6 @@ done
 %{_libdir}/rocm/gfx*/bin/*
 %{_libdir}/rocm/gfx*/lib64/*
 %endif
-
-
 
 %changelog
 %autochangelog
