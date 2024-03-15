@@ -37,21 +37,18 @@
 %global rocm_default_gpu default
 %bcond_without rocm_loop
 
-%bcond_with foxi
 # For testing caffe2
 %if 0%{?fedora}
-# need foxi-devel
-%if %{with foxi}
 %bcond_without caffe2
-%else
-%bcond_with caffe2
-%endif
 %else
 %bcond_with caffe2
 %endif
 
 # For testing distributed
 %bcond_with distributed
+
+# For testing openvs
+%bcond_without opencv
 
 # For testing cuda
 %ifarch x86_64
@@ -102,19 +99,15 @@ Patch103:      0001-can-not-use-with-c-files.patch
 Patch104:      0001-use-any-hip.patch
 %endif
 
-# Limit to these because they are well behaved with clang
 ExclusiveArch:  x86_64 aarch64
-%if 0%{?fedora}
-%global toolchain clang
-%else
-# RHEL does not do clang well, nor lto
+%global toolchain gcc
 %global _lto_cflags %nil
-%endif
 
 BuildRequires:  cmake
 BuildRequires:  cpuinfo-devel
 BuildRequires:  eigen3-devel
 BuildRequires:  fmt-devel
+BuildRequires:  foxi-devel
 BuildRequires:  FP16-devel
 BuildRequires:  fxdiv-devel
 BuildRequires:  gcc-c++
@@ -181,11 +174,10 @@ BuildRequires:  rocthrust-devel
 Requires:       rocm-rpm-macros-modules
 %endif
 
-%if %{with foxi}
-%if %{with caffe2}
-BuildRequires:  foxi-devel
+%if %{with opencv}
+BuildRequires:  opencv-devel
 %endif
-%endif
+
 
 %if %{with test}
 BuildRequires:  google-benchmark-devel
@@ -444,6 +436,10 @@ export USE_CUDA=ON
 
 %if %{with distributed}
 export USE_DISTRIBUTED=ON
+%endif
+
+%if %{with opencv}
+export USE_OPENCV=ON
 %endif
 
 %if %{with test}
