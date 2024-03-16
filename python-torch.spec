@@ -4,11 +4,12 @@
 %global forgeurl https://github.com/pytorch/pytorch
 
 # So pre releases can be tried
-%bcond_with gitcommit
+%bcond_without gitcommit
 %if %{with gitcommit}
-%global commit0 975d4284250170602db60adfda5eb1664a3b8acc
+# git tag v2.3.0-rc2
+%global commit0 6a89a753b1556fe8558582c452fdba083f6ec01a
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20240307
+%global date0 20240313
 %else
 %global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
