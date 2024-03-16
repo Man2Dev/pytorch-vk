@@ -48,7 +48,7 @@
 %bcond_with distributed
 
 # For testing openvs
-%bcond_without opencv
+%bcond_with opencv
 
 # For testing cuda
 %ifarch x86_64
