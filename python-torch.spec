@@ -26,7 +26,7 @@
 
 %ifarch x86_64
 %if 0%{?fedora}
-%bcond_with rocm
+%bcond_without rocm
 %else
 %bcond_with rocm
 %endif
@@ -35,8 +35,8 @@
 %bcond_with hipblaslt
 # Which families gpu build for
 %global rocm_gpu_list gfx8 gfx9 gfx10 gfx11
-%global rocm_default_gpu default
-%bcond_without rocm_loop
+%global rocm_default_gpu gfx9
+%bcond_with rocm_loop
 
 # For testing caffe2
 %if 0%{?fedora}
@@ -49,7 +49,7 @@
 %bcond_with distributed
 
 # For testing openvs
-%bcond_without opencv
+%bcond_with opencv
 
 # For testing cuda
 %ifarch x86_64
@@ -265,7 +265,6 @@ cp -r cutlass-%{cul_ver}/* third_party/cutlass/
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND AND USE_FFMPEG AND FFMPEG_FOUND/USE_OPENCV AND USE_FFMPEG/' caffe2/video/CMakeLists.txt
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND/USE_OPENCV/' caffe2/image/CMakeLists.txt
 sed -i -e 's/STATUS/FATAL/' caffe2/image/CMakeLists.txt
-cat caffe2/image/CMakeLists.txt
 %endif
 
 %if 0%{?rhel}
@@ -275,6 +274,12 @@ sed -i -e '/typing-extensions/d' setup.py
 sed -i -e '/sympy/d' setup.py
 sed -i -e '/fsspec/d' setup.py
 %endif
+
+# A new dependency
+# Connected to USE_FLASH_ATTENTION, since this is off, do not need it
+sed -i -e '/aotriton.cmake/d' cmake/Dependencies.cmake
+# sed -i -e '/aotriton/d' aten/src/ATen/native/transformers/cuda/sdp_utils.cpp
+rm  aten/src/ATen/native/transformers/cuda/sdp_utils.cpp
 
 # Release comes fully loaded with third party src
 # Remove what we can
@@ -396,6 +401,7 @@ export INTERN_BUILD_MOBILE=OFF
 export USE_DISTRIBUTED=OFF
 export USE_CUDA=OFF
 export USE_FBGEMM=OFF
+export USE_FLASH_ATTENTION=OFF
 export USE_GOLD_LINKER=OFF
 export USE_ITT=OFF
 export USE_KINETO=OFF
@@ -460,9 +466,11 @@ export BUILD_TEST=ON
 %if %{with rocm}
 
 export USE_ROCM=ON
-export HIP_PATH=%{_prefix}
-export ROCM_PATH=%{_prefix}
-export DEVICE_LIB_PATH=%{clang_resource_dir}/amdgcn/bitcode
+export HIP_PATH=`hipconfig -p`
+export ROCM_PATH=`hipconfig -R`
+export HIP_CLANG_PATH=`hipconfig -l`
+RESOURCE_DIR=`${HIP_CLANG_PATH}/clang -print-resource-dir`
+export DEVICE_LIB_PATH=${RESOURCE_DIR}/amdgcn/bitcode
 
 gpu=%{rocm_default_gpu}
 module load rocm/$gpu
@@ -493,9 +501,11 @@ done
 %if %{with rocm}
 
 export USE_ROCM=ON
-export HIP_PATH=%{_prefix}
-export ROCM_PATH=%{_prefix}
-export DEVICE_LIB_PATH=%{clang_resource_dir}/amdgcn/bitcode
+export HIP_PATH=`hipconfig -p`
+export ROCM_PATH=`hipconfig -R`
+export HIP_CLANG_PATH=`hipconfig -l`
+RESOURCE_DIR=`${HIP_CLANG_PATH}/clang -print-resource-dir`
+export DEVICE_LIB_PATH=${RESOURCE_DIR}/amdgcn/bitcode
 
 gpu=%{rocm_default_gpu}
 module load rocm/$gpu
@@ -541,8 +551,10 @@ done
 %{python3_sitearch}/caffe2
 %endif
 %if %{with rocm}
+%if %{with rocm_loop}
 %{_libdir}/rocm/gfx*/bin/*
 %{_libdir}/rocm/gfx*/lib64/*
+%endif
 %endif
 
 %changelog
