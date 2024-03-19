@@ -98,6 +98,7 @@ Patch101:      0001-cuda-hip-signatures.patch
 Patch102:      0001-silence-an-assert.patch
 Patch103:      0001-can-not-use-with-c-files.patch
 Patch104:      0001-use-any-hip.patch
+Patch105:      0001-disable-use-of-aotriton.patch
 %endif
 
 ExclusiveArch:  x86_64 aarch64
@@ -278,8 +279,6 @@ sed -i -e '/fsspec/d' setup.py
 # A new dependency
 # Connected to USE_FLASH_ATTENTION, since this is off, do not need it
 sed -i -e '/aotriton.cmake/d' cmake/Dependencies.cmake
-# sed -i -e '/aotriton/d' aten/src/ATen/native/transformers/cuda/sdp_utils.cpp
-rm  aten/src/ATen/native/transformers/cuda/sdp_utils.cpp
 
 # Release comes fully loaded with third party src
 # Remove what we can
