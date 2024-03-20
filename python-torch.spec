@@ -35,8 +35,8 @@
 %bcond_with hipblaslt
 # Which families gpu build for
 %global rocm_gpu_list gfx8 gfx9 gfx10 gfx11
-%global rocm_default_gpu gfx9
-%bcond_with rocm_loop
+%global rocm_default_gpu default
+%bcond_without rocm_loop
 
 # For testing caffe2
 %if 0%{?fedora}
@@ -172,6 +172,7 @@ BuildRequires:  rocm-runtime-devel
 BuildRequires:  rocm-rpm-macros
 BuildRequires:  rocm-rpm-macros-modules
 BuildRequires:  rocthrust-devel
+BuildRequires:  roctracer-devel
 
 Requires:       rocm-rpm-macros-modules
 %endif
