@@ -91,7 +91,7 @@ Patch5:        0001-disable-submodule-search.patch
 Patch6:        0001-reenable-foxi-linking.patch
 %endif
 
-%if %{with rocm}
+# ROCm patches
 # https://github.com/pytorch/pytorch/pull/120551
 Patch100:      0001-Optionally-use-hipblaslt.patch
 Patch101:      0001-cuda-hip-signatures.patch
@@ -99,7 +99,6 @@ Patch102:      0001-silence-an-assert.patch
 Patch103:      0001-can-not-use-with-c-files.patch
 Patch104:      0001-use-any-hip.patch
 Patch105:      0001-disable-use-of-aotriton.patch
-%endif
 
 ExclusiveArch:  x86_64 aarch64
 %global toolchain gcc
