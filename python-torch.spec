@@ -214,20 +214,31 @@ PyTorch is a Python package that provides two high-level features:
 You can reuse your favorite Python packages such as NumPy, SciPy,
 and Cython to extend PyTorch when needed.
 
-%package -n python3-%{pypi_name}-devel
-Summary:        Libraries and headers for %{name}
-Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
-
-%description -n python3-%{pypi_name}-devel
-%{summary}
-
 %if %{with rocm}
-%package -n python3-%{pypi_name}-rocm
-Summary:        %{name} for ROCm
-Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
+%package -n python3-%{pypi_name}-rocm-gfx8
+Summary:        %{name} for ROCm gfx8
 
-%description -n python3-%{pypi_name}-rocm
+%description -n python3-%{pypi_name}-rocm-gfx8
 %{summary}
+
+%package -n python3-%{pypi_name}-rocm-gfx9
+Summary:        %{name} for ROCm gfx9
+
+%description -n python3-%{pypi_name}-rocm-gfx9
+%{summary}
+
+%package -n python3-%{pypi_name}-rocm-gfx10
+Summary:        %{name} for ROCm gfx10
+
+%description -n python3-%{pypi_name}-rocm-gfx10
+%{summary}
+
+%package -n python3-%{pypi_name}-rocm-gfx11
+Summary:        %{name} for ROCm gfx11
+
+%description -n python3-%{pypi_name}-rocm-gfx11
+%{summary}
+
 %endif
 
 %if %{with test}
@@ -550,11 +561,23 @@ done
 %if %{with caffe2}
 %{python3_sitearch}/caffe2
 %endif
+
 %if %{with rocm}
-%if %{with rocm_loop}
-%{_libdir}/rocm/gfx*/bin/*
-%{_libdir}/rocm/gfx*/lib64/*
-%endif
+%files -n python3-%{pypi_name}-rocm-gfx8
+%{_libdir}/rocm/gfx8/bin/*
+%{_libdir}/rocm/gfx8/lib64/*
+
+%files -n python3-%{pypi_name}-rocm-gfx9
+%{_libdir}/rocm/gfx9/bin/*
+%{_libdir}/rocm/gfx9/lib64/*
+
+%files -n python3-%{pypi_name}-rocm-gfx10
+%{_libdir}/rocm/gfx10/bin/*
+%{_libdir}/rocm/gfx10/lib64/*
+
+%files -n python3-%{pypi_name}-rocm-gfx11
+%{_libdir}/rocm/gfx11/bin/*
+%{_libdir}/rocm/gfx11/lib64/*
 %endif
 
 %changelog
