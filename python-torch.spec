@@ -6,10 +6,10 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# git tag v2.3.0-rc2
-%global commit0 6a89a753b1556fe8558582c452fdba083f6ec01a
+# git tag v2.3.0-rc6
+%global commit0 74832f12fae2e1bc51bf1f9971dcd12c90a971f5
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20240313
+%global date0 20242213
 %else
 %global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
@@ -180,10 +180,12 @@ Requires:       rocm-rpm-macros-modules
 BuildRequires:  opencv-devel
 %endif
 
-
 %if %{with test}
 BuildRequires:  google-benchmark-devel
 %endif
+
+Requires:       python3dist(dill)
+
 
 # Apache-2.0
 Provides:       bundled(flatbuffers) = 22.3.3
