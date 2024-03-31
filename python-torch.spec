@@ -186,12 +186,14 @@ BuildRequires:  google-benchmark-devel
 
 Requires:       python3dist(dill)
 
-
 # Apache-2.0
 Provides:       bundled(flatbuffers) = 22.3.3
 # MIT
 Provides:       bundled(miniz) = 2.1.0
 Provides:       bundled(pybind11) = 2.11.1
+# For convience
+Provides:       pytorch
+
 
 
 %description
