@@ -6,10 +6,10 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# git tag v2.3.0-rc6
-%global commit0 74832f12fae2e1bc51bf1f9971dcd12c90a971f5
+# git tag v2.3.0-rc7
+%global commit0 4bb5cb51e6ceeb4b0b70b439c7b92168855f146f
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20242213
+%global date0 20240402
 %else
 %global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
@@ -47,6 +47,11 @@
 
 # For testing distributed
 %bcond_with distributed
+# For testing distributed+rccl etc.
+%bcond_with rccl
+%bcond_with gloo
+%bcond_with mpi
+%bcond_with tensorpipe
 
 # For testing openvs
 %bcond_with opencv
@@ -81,6 +86,20 @@ Source10:       https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v%{cu
 Source11:       https://github.com/NVIDIA/cutlass/archive/refs/tags/v%{cul_ver}.tar.gz
 %endif
 
+%if %{with tensorpipe}
+# Developement on tensorpipe has stopped, repo made read only July 1, 2023, this is the last commit
+%global tp_commit 52791a2fd214b2a9dc5759d36725909c1daa7f2e
+%global tp_scommit %(c=%{tp_commit}; echo ${c:0:7})
+Source20:       https://github.com/pytorch/tensorpipe/archive/%{tp_commit}/tensorpipe-%{tp_scommit}.tar.gz
+# The old libuv tensorpipe uses
+Source21:       https://github.com/libuv/libuv/archive/refs/tags/v1.41.0.tar.gz
+# Developement afaik on libnop has stopped, this is the last commit
+%global nop_commit 910b55815be16109f04f4180e9adee14fb4ce281
+%global nop_scommit %(c=%{nop_commit}; echo ${c:0:7})
+Source22:       https://github.com/google/libnop/archive/%{nop_commit}/libnop-%{nop_scommit}.tar.gz
+
+%endif
+
 Patch0:        0001-no-third_party-foxi.patch
 Patch1:        0001-no-third_party-fmt.patch
 Patch2:        0001-no-third_party-FXdiv.patch
@@ -90,6 +109,9 @@ Patch5:        0001-disable-submodule-search.patch
 %if %{with caffe2}
 Patch6:        0001-reenable-foxi-linking.patch
 %endif
+
+# https://github.com/pytorch/pytorch/pull/123384
+Patch7:        0001-Reenable-dim-for-python-3.12.patch
 
 # ROCm patches
 # https://github.com/pytorch/pytorch/pull/120551
@@ -114,19 +136,23 @@ BuildRequires:  fxdiv-devel
 BuildRequires:  gcc-c++
 BuildRequires:  gcc-gfortran
 %if %{with distributed}
+%if %{with gloo}
 BuildRequires:  gloo-devel
+%endif
 %endif
 BuildRequires:  ninja-build
 BuildRequires:  onnx-devel
 BuildRequires:  libomp-devel
+%if %{with distributed}
+%if %{with mpi}
+BuildRequires:  openmpi-devel
+%endif
+%endif
 BuildRequires:  openblas-devel
 BuildRequires:  pocketfft-devel
 BuildRequires:  protobuf-devel
 BuildRequires:  pthreadpool-devel
 BuildRequires:  psimd-devel
-BuildRequires:  python3-numpy
-BuildRequires:  python3-pyyaml
-BuildRequires:  python3-typing-extensions
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
 BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
@@ -135,9 +161,11 @@ BuildRequires:  python3-devel
 BuildRequires:  python3dist(filelock)
 BuildRequires:  python3dist(jinja2)
 BuildRequires:  python3dist(networkx)
+BuildRequires:  python3dist(numpy)
+BuildRequires:  python3dist(pyyaml)
 BuildRequires:  python3dist(setuptools)
-BuildRequires:  python3dist(typing-extensions)
 BuildRequires:  python3dist(sphinx)
+BuildRequires:  python3dist(typing-extensions)
 
 %if 0%{?fedora}
 BuildRequires:  python3-pybind11
@@ -160,7 +188,9 @@ BuildRequires:  rocblas-devel
 BuildRequires:  rocrand-devel
 BuildRequires:  rocfft-devel
 %if %{with distributed}
+%if %{with rccl}
 BuildRequires:  rccl-devel
+%endif
 %endif
 BuildRequires:  rocprim-devel
 BuildRequires:  rocm-cmake
@@ -186,13 +216,23 @@ BuildRequires:  google-benchmark-devel
 
 Requires:       python3dist(dill)
 
+# For convience
+Provides:       pytorch
+
 # Apache-2.0
 Provides:       bundled(flatbuffers) = 22.3.3
 # MIT
 Provides:       bundled(miniz) = 2.1.0
 Provides:       bundled(pybind11) = 2.11.1
-# For convience
-Provides:       pytorch
+
+%if %{with tensorpipe}
+# BSD-3-Clause
+Provides:       bundled(tensorpipe)
+# Apache-2.0
+Provides:       bundled(libnop)
+# MIT AND CC-BY-4.0 AND ISC AND BSD-2-Clause
+Provides:       bundled(libuv) = 1.41.0
+%endif
 
 
 
@@ -276,6 +316,15 @@ tar xf %{SOURCE11}
 cp -r cutlass-%{cul_ver}/* third_party/cutlass/
 %endif
 
+%if %{with tensorpipe}
+tar xf %{SOURCE20}
+cp -r tensorpipe-*/* third_party/tensorpipe/
+tar xf %{SOURCE21}
+cp -r libuv-*/* third_party/tensorpipe/third_party/libuv/
+tar xf %{SOURCE22}
+cp -r libnop-*/* third_party/tensorpipe/third_party/libnop/
+%endif
+
 %if %{with opencv}
 # Reduce requirements, *FOUND is not set 
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND AND USE_FFMPEG AND FFMPEG_FOUND/USE_OPENCV AND USE_FFMPEG/' caffe2/video/CMakeLists.txt
@@ -318,6 +367,10 @@ mv third_party/cudnn_frontend .
 mv third_party/cutlass .
 %endif
 
+%if %{with tensorpipe}
+mv third_party/tensorpipe .
+%endif
+
 %if %{with test}
 mv third_party/googletest .
 %endif
@@ -333,6 +386,10 @@ mv pybind11 third_party
 %if %{with cuda}
 mv cudnn_frontend third_party
 mv cutlass third_party
+%endif
+
+%if %{with tensorpipe}
+mv tensorpipe third_party
 %endif
 
 %if %{with test}
@@ -417,11 +474,14 @@ export USE_CUDA=OFF
 export USE_FBGEMM=OFF
 export USE_FLASH_ATTENTION=OFF
 export USE_GOLD_LINKER=OFF
+export USE_GLOO=OFF
 export USE_ITT=OFF
 export USE_KINETO=OFF
 export USE_LITE_INTERPRETER_PROFILER=OFF
 export USE_LITE_PROTO=OFF
+export USE_MAGMA=OFF
 export USE_MKLDNN=OFF
+export USE_MPI=OFF
 export USE_NCCL=OFF
 export USE_NNPACK=OFF
 export USE_NUMPY=ON
@@ -457,6 +517,17 @@ export USE_CUDA=ON
 
 %if %{with distributed}
 export USE_DISTRIBUTED=ON
+%if %{with tensorpipe}
+export USE_TENSORPIPE=ON
+export TP_BUILD_LIBUV=OFF
+%endif
+
+%if %{with gloo}
+export USE_GLOO=ON
+%endif
+%if %{with mpi}
+export USE_MPI=ON
+%endif
 %endif
 
 %if %{with opencv}
