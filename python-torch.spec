@@ -6,10 +6,10 @@
 # So pre releases can be tried
 %bcond_without gitcommit
 %if %{with gitcommit}
-# git tag v2.3.0-rc7
-%global commit0 4bb5cb51e6ceeb4b0b70b439c7b92168855f146f
+# git tag v2.3.0-rc12
+%global commit0 97ff6cfd9c86c5c09d7ce775ab64ec5c99230f5d
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20240402
+%global date0 20240408
 %else
 %global commit0 975d4284250170602db60adfda5eb1664a3b8acc
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
@@ -46,12 +46,12 @@
 %endif
 
 # For testing distributed
-%bcond_with distributed
+%bcond_without distributed
 # For testing distributed+rccl etc.
 %bcond_with rccl
 %bcond_with gloo
-%bcond_with mpi
-%bcond_with tensorpipe
+%bcond_without mpi
+%bcond_without tensorpipe
 
 # For testing openvs
 %bcond_with opencv
