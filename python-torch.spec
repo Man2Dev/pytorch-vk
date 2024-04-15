@@ -524,6 +524,7 @@ export TP_BUILD_LIBUV=OFF
 
 %if %{with gloo}
 export USE_GLOO=ON
+export USE_SYSTEM_GLOO=ON
 %endif
 %if %{with mpi}
 export USE_MPI=ON
