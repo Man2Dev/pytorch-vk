@@ -4,16 +4,12 @@
 %global forgeurl https://github.com/pytorch/pytorch
 
 # So pre releases can be tried
-%bcond_without gitcommit
+%bcond_with gitcommit
 %if %{with gitcommit}
 # git tag v2.3.0-rc12
 %global commit0 97ff6cfd9c86c5c09d7ce775ab64ec5c99230f5d
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 %global date0 20240408
-%else
-%global commit0 975d4284250170602db60adfda5eb1664a3b8acc
-%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20240307
 %endif
 %global pypi_version 2.3.0
 
@@ -48,7 +44,7 @@
 # For testing distributed
 %bcond_without distributed
 # For testing distributed+rccl etc.
-%bcond_with rccl
+%bcond_without rccl
 %bcond_with gloo
 %bcond_without mpi
 %bcond_without tensorpipe
@@ -62,7 +58,11 @@
 %endif
 
 Name:           python-%{pypi_name}
+%if %{with gitcommit}
 Version:        %{pypi_version}^git%{date0}.%{shortcommit0}
+%else
+Version:        %{pypi_version}
+%endif
 Release:        %autorelease
 Summary:        PyTorch AI/ML framework
 # See license.txt for license details
@@ -73,8 +73,7 @@ URL:            https://pytorch.org/
 Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
 Source100:        pyproject.toml
 %else
-Source0:        %{forgeurl}/archive/%{commit0}/pytorch-%{shortcommit0}.tar.gz
-Source100:        pyproject.toml
+Source0:        %{forgeurl}/releases/download/v%{version}/pytorch-v%{version}.tar.gz
 %endif
 Source1:        https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz
 Source2:        https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz
@@ -296,12 +295,16 @@ Requires:       python3-%{pypi_name}%{?_isa} = %{version}-%{release}
 
 %prep
 
+%if %{with gitcommit}
 %autosetup -p1 -n pytorch-%{commit0}
+# Overwrite with a git checkout of the pyproject.toml
+cp %{SOURCE100} .
+%else
+%autosetup -p1 -n pytorch-v%{version}
+%endif
 
 # Remove bundled egg-info
 rm -rf %{pypi_name}.egg-info
-# Overwrite with a git checkout of the pyproject.toml
-cp %{SOURCE100} .
 
 tar xf %{SOURCE1}
 cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
