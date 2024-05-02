@@ -50,11 +50,20 @@
 %bcond_without tensorpipe
 
 # For testing openvs
+%if 0%{?fedora}
+%bcond_without opencv
+%else
 %bcond_with opencv
+%endif
 
 # For testing cuda
 %ifarch x86_64
 %bcond_with cuda
+%endif
+
+# Disable dwz with rocm because memory can be exhausted
+%if %{with rocm}
+%define _find_debuginfo_dwz_opts %{nil}
 %endif
 
 Name:           python-%{pypi_name}
