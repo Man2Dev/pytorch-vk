@@ -121,6 +121,9 @@ Patch6:        0001-reenable-foxi-linking.patch
 # https://github.com/pytorch/pytorch/pull/123384
 Patch7:        0001-Reenable-dim-for-python-3.12.patch
 
+# Dynamo/Inductor on 3.12
+Patch8:        0001-dynamo-3.12-enable-dynamo-on-3.12-enable-most-dynamo.patch
+
 # ROCm patches
 # https://github.com/pytorch/pytorch/pull/120551
 Patch100:      0001-Optionally-use-hipblaslt.patch
