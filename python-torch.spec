@@ -21,7 +21,8 @@
 %bcond_with test
 
 %ifarch x86_64
-%if 0%{?fedora}
+# ROCm support came in F41
+%if 0%{?fedora} > 40
 %bcond_without rocm
 %else
 %bcond_with rocm
@@ -34,26 +35,37 @@
 %global rocm_default_gpu default
 %bcond_without rocm_loop
 
-# For testing caffe2
-%if 0%{?fedora}
+# Caffe2 support came in F41
+%if 0%{?fedora} > 40
 %bcond_without caffe2
 %else
 %bcond_with caffe2
 %endif
 
-# For testing distributed
+# Distributed support came in F41
+%if 0%{?fedora} > 40
 %bcond_without distributed
 # For testing distributed+rccl etc.
 %bcond_without rccl
 %bcond_with gloo
 %bcond_without mpi
 %bcond_without tensorpipe
+%else
+%bcond_with distributed
+%endif
 
-# For testing openvs
-%if 0%{?fedora}
+# OpenCV support came in F41
+%if 0%{?fedora} > 40
 %bcond_without opencv
 %else
 %bcond_with opencv
+%endif
+
+# Do no confuse xnnpack versions
+%if 0%{?fedora} > 40
+%bcond_without xnnpack
+%else
+%bcond_with xnnpack
 %endif
 
 # For testing cuda
@@ -105,7 +117,6 @@ Source21:       https://github.com/libuv/libuv/archive/refs/tags/v1.41.0.tar.gz
 %global nop_commit 910b55815be16109f04f4180e9adee14fb4ce281
 %global nop_scommit %(c=%{nop_commit}; echo ${c:0:7})
 Source22:       https://github.com/google/libnop/archive/%{nop_commit}/libnop-%{nop_scommit}.tar.gz
-
 %endif
 
 Patch0:        0001-no-third_party-foxi.patch
@@ -141,7 +152,9 @@ BuildRequires:  cmake
 BuildRequires:  cpuinfo-devel
 BuildRequires:  eigen3-devel
 BuildRequires:  fmt-devel
+%if %{with caffe2}
 BuildRequires:  foxi-devel
+%endif
 BuildRequires:  FP16-devel
 BuildRequires:  fxdiv-devel
 BuildRequires:  gcc-c++
@@ -166,7 +179,9 @@ BuildRequires:  pthreadpool-devel
 BuildRequires:  psimd-devel
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
+%if %{with xnnpack}
 BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
+%endif
 
 BuildRequires:  python3-devel
 BuildRequires:  python3dist(filelock)
@@ -512,11 +527,14 @@ export USE_SYSTEM_PTHREADPOOL=ON
 export USE_SYSTEM_PSIMD=ON
 export USE_SYSTEM_FXDIV=ON
 export USE_SYSTEM_ONNX=ON
-export USE_SYSTEM_XNNPACK=ON
 export USE_SYSTEM_PYBIND11=OFF
 export USE_SYSTEM_LIBS=OFF
 export USE_TENSORPIPE=OFF
+
+%if %{with xnnpack}
+export USE_SYSTEM_XNNPACK=ON
 export USE_XNNPACK=ON
+%endif
 
 %if %{with caffe2}
 export BUILD_CAFFE2=ON
