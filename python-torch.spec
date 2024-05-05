@@ -155,8 +155,6 @@ BuildRequires:  fmt-devel
 %if %{with caffe2}
 BuildRequires:  foxi-devel
 %endif
-BuildRequires:  FP16-devel
-BuildRequires:  fxdiv-devel
 BuildRequires:  gcc-c++
 BuildRequires:  gcc-gfortran
 %if %{with distributed}
@@ -173,12 +171,19 @@ BuildRequires:  openmpi-devel
 %endif
 %endif
 BuildRequires:  openblas-devel
-BuildRequires:  pocketfft-devel
 BuildRequires:  protobuf-devel
-BuildRequires:  pthreadpool-devel
-BuildRequires:  psimd-devel
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
+
+# These packages came in F40
+%if 0%{?fedora} > 39
+BuildRequires:  FP16-devel
+BuildRequires:  fxdiv-devel
+BuildRequires:  pocketfft-devel
+BuildRequires:  psimd-devel
+BuildRequires:  pthreadpool-devel
+%endif
+
 %if %{with xnnpack}
 BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
 %endif
