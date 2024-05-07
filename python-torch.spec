@@ -68,6 +68,18 @@
 %bcond_with xnnpack
 %endif
 
+%if 0%{?fedora} > 39
+%bcond_without pthreadpool
+%else
+%bcond_with pthreadpool
+%endif
+
+%if 0%{?fedora} > 39
+%bcond_without pocketfft
+%else
+%bcond_with pocketfft
+%endif
+
 # For testing cuda
 %ifarch x86_64
 %bcond_with cuda
@@ -117,6 +129,33 @@ Source21:       https://github.com/libuv/libuv/archive/refs/tags/v1.41.0.tar.gz
 %global nop_commit 910b55815be16109f04f4180e9adee14fb4ce281
 %global nop_scommit %(c=%{nop_commit}; echo ${c:0:7})
 Source22:       https://github.com/google/libnop/archive/%{nop_commit}/libnop-%{nop_scommit}.tar.gz
+%endif
+
+%if %{without xnnpack}
+%global xnn_commit fcbf55af6cf28a4627bcd1f703ab7ad843f0f3a2
+%global xnn_scommit %(c=%{xnn_commit}; echo ${c:0:7})
+Source30:       https://github.com/google/xnnpack/archive/%{xnn_commit}/xnnpack-%{xnn_scommit}.tar.gz
+%global fx_commit 63058eff77e11aa15bf531df5dd34395ec3017c8
+%global fx_scommit %(c=%{fx_commit}; echo ${c:0:7})
+Source31:       https://github.com/Maratyszcza/fxdiv/archive/%{fx_commit}/FXdiv-%{fx_scommit}.tar.gz
+%global fp_commit 0a92994d729ff76a58f692d3028ca1b64b145d91
+%global fp_scommit %(c=%{fp_commit}; echo ${c:0:7})
+Source32:       https://github.com/Maratyszcza/FP16/archive/%{fp_commit}/FP16-%{fp_scommit}.tar.gz
+%global ps_commit 072586a71b55b7f8c584153d223e95687148a900
+%global ps_scommit %(c=%{ps_commit}; echo ${c:0:7})
+Source33:       https://github.com/Maratyszcza/psimd/archive/%{ps_commit}/psimd-%{ps_scommit}.tar.gz
+%endif
+
+%if %{without pthreadpool}
+%global pt_commit 4fe0e1e183925bf8cfa6aae24237e724a96479b8
+%global pt_scommit %(c=%{pt_commit}; echo ${c:0:7})
+Source40:       https://github.com/Maratyszcza/pthreadpool/archive/%{pt_commit}/pthreadpool-%{pt_scommit}.tar.gz
+%endif
+
+%if %{without pocketfft}
+%global pf_commit 076cb3d2536b7c5d0629093ad886e10ac05f3623
+%global pf_scommit %(c=%{pf_commit}; echo ${c:0:7})
+Source50:       https://github.com/mreineck/pocketfft/archive/%{pf_commit}/pocketfft-%{pf_scommit}.tar.gz
 %endif
 
 Patch0:        0001-no-third_party-foxi.patch
@@ -175,16 +214,18 @@ BuildRequires:  protobuf-devel
 BuildRequires:  sleef-devel
 BuildRequires:  valgrind-devel
 
-# These packages came in F40
-%if 0%{?fedora} > 39
-BuildRequires:  FP16-devel
-BuildRequires:  fxdiv-devel
+%if %{with pocketfft}
 BuildRequires:  pocketfft-devel
-BuildRequires:  psimd-devel
+%endif
+
+%if %{with pthreadpool}
 BuildRequires:  pthreadpool-devel
 %endif
 
 %if %{with xnnpack}
+BuildRequires:  FP16-devel
+BuildRequires:  fxdiv-devel
+BuildRequires:  psimd-devel
 BuildRequires:  xnnpack-devel = 0.0^git20240229.fcbf55a
 %endif
 
@@ -265,7 +306,27 @@ Provides:       bundled(libnop)
 Provides:       bundled(libuv) = 1.41.0
 %endif
 
+# These are already in Fedora
+%if %{without xnnpack}
+# BSD-3-Clause
+Provides:       bundled(xnnpack)
+# MIT
+Provides:       bundled(FP16)
+# MIT
+Provides:       bundled(fxdiv)
+# MIT
+Provides:       bundled(psimd)
+%endif
 
+%if %{without pthreadpool}
+# BSD-2-Clause
+Provides:       bundled(pthreadpool)
+%endif
+
+%if %{without pocketfft}
+# BSD-3-Clause
+Provides:       bundled(pocketfft)
+%endif
 
 %description
 PyTorch is a Python package that provides two high-level features:
@@ -339,25 +400,59 @@ cp %{SOURCE100} .
 rm -rf %{pypi_name}.egg-info
 
 tar xf %{SOURCE1}
+rm -rf third_party/flatbuffers/*
 cp -r flatbuffers-23.3.3/* third_party/flatbuffers/
 
 tar xf %{SOURCE2}
+rm -rf third_party/pybind11/*
 cp -r pybind11-2.11.1/* third_party/pybind11/
 
 %if %{with cuda}
 tar xf %{SOURCE10}
+rm -rf third_party/cudnn_frontend/*
 cp -r cudnn-frontend-%{cuf_ver}/* third_party/cudnn_frontend/
 tar xf %{SOURCE11}
+rm -rf third_party/cutlass/*
 cp -r cutlass-%{cul_ver}/* third_party/cutlass/
 %endif
 
 %if %{with tensorpipe}
 tar xf %{SOURCE20}
+rm -rf third_party/tensorpipe/*
 cp -r tensorpipe-*/* third_party/tensorpipe/
 tar xf %{SOURCE21}
+rm -rf third_party/tensorpipe/third_party/libuv/*
 cp -r libuv-*/* third_party/tensorpipe/third_party/libuv/
 tar xf %{SOURCE22}
+rm -rf third_party/tensorpipe/third_party/libnop/*
 cp -r libnop-*/* third_party/tensorpipe/third_party/libnop/
+%endif
+
+%if %{without xnnpack}
+tar xf %{SOURCE30}
+rm -rf third_party/XNNPACK/*
+cp -r XNNPACK-*/* third_party/XNNPACK/
+tar xf %{SOURCE31}
+rm -rf third_party/FXdiv/*
+cp -r FXdiv-*/* third_party/FXdiv/
+tar xf %{SOURCE32}
+rm -rf third_party/FP16/*
+cp -r FP16-*/* third_party/FP16/
+tar xf %{SOURCE33}
+rm -rf third_party/psimd/*
+cp -r psimd-*/* third_party/psimd/
+%endif
+
+%if %{without pthreadpool}
+tar xf %{SOURCE40}
+rm -rf third_party/pthreadpool/*
+cp -r pthreadpool-*/* third_party/pthreadpool/
+%endif
+
+%if %{without pocketfft}
+tar xf %{SOURCE50}
+rm -rf third_party/pocketfft/*
+cp -r pocketfft-*/* third_party/pocketfft/
 %endif
 
 %if %{with opencv}
@@ -406,6 +501,21 @@ mv third_party/cutlass .
 mv third_party/tensorpipe .
 %endif
 
+%if %{without xnnpack}
+mv third_party/XNNPACK .
+mv third_party/FXdiv .
+mv third_party/FP16 .
+mv third_party/psimd .
+%endif
+
+%if %{without pthreadpool}
+mv third_party/pthreadpool .
+%endif
+
+%if %{without pocketfft}
+mv third_party/pocketfft .
+%endif
+
 %if %{with test}
 mv third_party/googletest .
 %endif
@@ -427,13 +537,31 @@ mv cutlass third_party
 mv tensorpipe third_party
 %endif
 
+%if %{without xnnpack}
+mv XNNPACK third_party
+mv FXdiv third_party
+mv FP16 third_party
+mv psimd third_party
+%endif
+
+%if %{without pthreadpool}
+mv pthreadpool third_party
+%endif
+
+%if %{without pocketfft}
+mv pocketfft third_party
+%endif
+
 %if %{with test}
 mv googletest third_party
 %endif
 
+%if %{with pocketfft}
 #
 # Fake out pocketfft, and system header will be used
 mkdir third_party/pocketfft
+%endif
+
 #
 # Use the system valgrind headers
 mkdir third_party/valgrind-headers
@@ -527,18 +655,21 @@ export USE_ROCM=OFF
 export USE_SYSTEM_CPUINFO=ON
 export USE_SYSTEM_SLEEF=ON
 export USE_SYSTEM_EIGEN_INSTALL=ON
-export USE_SYSTEM_FP16=ON
-export USE_SYSTEM_PTHREADPOOL=ON
-export USE_SYSTEM_PSIMD=ON
-export USE_SYSTEM_FXDIV=ON
 export USE_SYSTEM_ONNX=ON
 export USE_SYSTEM_PYBIND11=OFF
 export USE_SYSTEM_LIBS=OFF
 export USE_TENSORPIPE=OFF
+export USE_XNNPACK=ON
+
+%if %{with pthreadpool}
+export USE_SYSTEM_PTHREADPOOL=ON
+%endif
 
 %if %{with xnnpack}
+export USE_SYSTEM_FP16=ON
+export USE_SYSTEM_FXDIV=ON
+export USE_SYSTEM_PSIMD=ON
 export USE_SYSTEM_XNNPACK=ON
-export USE_XNNPACK=ON
 %endif
 
 %if %{with caffe2}
