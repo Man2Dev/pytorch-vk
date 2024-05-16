@@ -681,6 +681,8 @@ export BUILD_CAFFE2=ON
 export CUDACXX=/usr/local/cuda/bin/nvcc
 export CPLUS_INCLUDE_PATH=/usr/local/cuda/include
 export USE_CUDA=ON
+# The arches to build for
+export TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0"
 %endif
 %endif
 
