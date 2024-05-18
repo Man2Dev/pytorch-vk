@@ -21,8 +21,8 @@
 %bcond_with test
 
 %ifarch x86_64
-# ROCm support came in F41
-%if 0%{?fedora} > 40
+# ROCm support came in F40
+%if 0%{?fedora} > 39
 %bcond_without rocm
 %else
 %bcond_with rocm
