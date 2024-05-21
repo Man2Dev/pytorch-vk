@@ -6,12 +6,14 @@
 # So pre releases can be tried
 %bcond_with gitcommit
 %if %{with gitcommit}
-# git tag v2.3.0-rc12
-%global commit0 97ff6cfd9c86c5c09d7ce775ab64ec5c99230f5d
+# ToT
+%global commit0 b36e01801b89a516f4271f796773d5f4b43f1186
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-%global date0 20240408
-%endif
+%global date0 20240521
+%global pypi_version 2.4.0
+%else
 %global pypi_version 2.3.0
+%endif
 
 # For -test subpackage
 # suitable only for local testing
@@ -159,8 +161,6 @@ Source50:       https://github.com/mreineck/pocketfft/archive/%{pf_commit}/pocke
 %endif
 
 Patch0:        0001-no-third_party-foxi.patch
-Patch1:        0001-no-third_party-fmt.patch
-Patch2:        0001-no-third_party-FXdiv.patch
 Patch3:        0001-Stub-in-kineto-ActivityType.patch
 Patch5:        0001-disable-submodule-search.patch
 
@@ -168,12 +168,16 @@ Patch5:        0001-disable-submodule-search.patch
 Patch6:        0001-reenable-foxi-linking.patch
 %endif
 
+# Bring some patches forward
+%if %{without gitcommit}
 # https://github.com/pytorch/pytorch/pull/123384
 Patch7:        0001-Reenable-dim-for-python-3.12.patch
 
 # Dynamo/Inductor on 3.12
 Patch8:        0001-dynamo-3.12-enable-dynamo-on-3.12-enable-most-dynamo.patch
+%endif
 
+%if %{with rocm}
 # ROCm patches
 # https://github.com/pytorch/pytorch/pull/120551
 Patch100:      0001-Optionally-use-hipblaslt.patch
@@ -182,6 +186,7 @@ Patch102:      0001-silence-an-assert.patch
 Patch103:      0001-can-not-use-with-c-files.patch
 Patch104:      0001-use-any-hip.patch
 Patch105:      0001-disable-use-of-aotriton.patch
+%endif
 
 ExclusiveArch:  x86_64 aarch64
 %global toolchain gcc
@@ -328,6 +333,9 @@ Provides:       bundled(pthreadpool)
 Provides:       bundled(pocketfft)
 %endif
 
+# For convience
+Provides:       pytorch
+
 %description
 PyTorch is a Python package that provides two high-level features:
 
@@ -456,10 +464,12 @@ cp -r pocketfft-*/* third_party/pocketfft/
 %endif
 
 %if %{with opencv}
+%if %{without gitcommit}
 # Reduce requirements, *FOUND is not set 
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND AND USE_FFMPEG AND FFMPEG_FOUND/USE_OPENCV AND USE_FFMPEG/' caffe2/video/CMakeLists.txt
 sed -i -e 's/USE_OPENCV AND OpenCV_FOUND/USE_OPENCV/' caffe2/image/CMakeLists.txt
 sed -i -e 's/STATUS/FATAL/' caffe2/image/CMakeLists.txt
+%endif
 %endif
 
 %if 0%{?rhel}
@@ -473,6 +483,21 @@ sed -i -e '/fsspec/d' setup.py
 # A new dependency
 # Connected to USE_FLASH_ATTENTION, since this is off, do not need it
 sed -i -e '/aotriton.cmake/d' cmake/Dependencies.cmake
+
+# No third_party fmt, use system
+sed -i -e 's@fmt::fmt-header-only@fmt@' CMakeLists.txt
+sed -i -e 's@fmt::fmt-header-only@fmt@' c10/CMakeLists.txt
+sed -i -e 's@fmt::fmt-header-only@fmt@' torch/CMakeLists.txt
+sed -i -e 's@fmt::fmt-header-only@fmt@' cmake/Dependencies.cmake
+sed -i -e 's@add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)@#add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)@' cmake/Dependencies.cmake
+sed -i -e 's@set_target_properties(fmt-header-only PROPERTIES INTERFACE_COMPILE_FEATURES "")@#set_target_properties(fmt-header-only PROPERTIES INTERFACE_COMPILE_FEATURES "")@' cmake/Dependencies.cmake
+sed -i -e 's@list(APPEND Caffe2_DEPENDENCY_LIBS fmt::fmt-header-only)@#list(APPEND Caffe2_DEPENDENCY_LIBS fmt::fmt-header-only)@' cmake/Dependencies.cmake
+
+# No third_party FXdiv
+%if %{with xnnpack}
+sed -i -e 's@if(NOT TARGET fxdiv)@if(MSVC AND USE_XNNPACK)@' caffe2/CMakeLists.txt
+sed -i -e 's@TARGET_LINK_LIBRARIES(torch_cpu PRIVATE fxdiv)@#TARGET_LINK_LIBRARIES(torch_cpu PRIVATE fxdiv)@' caffe2/CMakeLists.txt
+%endif
 
 # Release comes fully loaded with third party src
 # Remove what we can
@@ -567,10 +592,12 @@ mkdir third_party/pocketfft
 mkdir third_party/valgrind-headers
 cp %{_includedir}/valgrind/* third_party/valgrind-headers
 
+%if %{without gitcommit}
 # Remove unneeded OpenCL files that confuse the lincense scanner
 rm caffe2/contrib/opencl/OpenCL/cl.hpp
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.h
 rm caffe2/mobile/contrib/libopencl-stub/include/CL/*.hpp
+%endif
 
 %if %{with rocm}
 # hipify
