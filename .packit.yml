@@ -6,7 +6,10 @@ actions:
   fix-spec-file: [ ]
   # create-archive: Here is the magic sauce. Just download the files in `Source` instead of running `git archive`
   create-archive:
-    - echo python-torch.spec
+    - spectool -g -s python-torch.spec
+    # Need to tell packit where the
+    - sh -c 'echo whisper.cpp-${PACKIT_PROJECT_VERSION}.tar.gz'
+  # get-current-version: Just read the `Version` from the spec file
   get-current-version:
     - rpmspec -q --qf "%{Version}" --srpm python-torch.spec
 
