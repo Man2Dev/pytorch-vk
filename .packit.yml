@@ -1,0 +1,20 @@
+specfile_path: python-torch.spec
+upstream_package_name: python-torch
+downstream_package_name: pytorch-vk
+actions:
+  # fix-spec-file: Optional if you want to make sure the spec file is exactly as in the git repo
+  fix-spec-file: [ ]
+  # create-archive: Here is the magic sauce. Just download the files in `Source` instead of running `git archive`
+  create-archive:
+    - echo python-torch.spec
+  get-current-version:
+    - rpmspec -q --qf "%{Version}" --srpm python-torch.spec
+
+jobs:
+  - job: copr_build
+    trigger: commit
+    targets:
+      - fedora-rawhide-x86_64
+      - fedora-rawhide-aarch64
+      - fedora-stable-x86_64
+      - fedora-stable-aarch64
