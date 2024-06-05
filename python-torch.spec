@@ -63,6 +63,13 @@
 %bcond_with opencv
 %endif
 
+# Vulkan hardware acceleration
+%if 0%{?fedora} > 39
+%bcond_without vulkan
+%else
+%bcond_with vulkan
+%endif
+
 # Do no confuse xnnpack versions
 %if 0%{?fedora} > 40
 %bcond_without xnnpack
@@ -283,6 +290,11 @@ BuildRequires:  roctracer-devel
 Requires:       rocm-rpm-macros-modules
 %endif
 
+%if %{with vulkan}
+BuildRequires:  vulkan-loader
+Requires:  vulkan-loader
+%endif
+
 %if %{with opencv}
 BuildRequires:  opencv-devel
 %endif
@@ -297,7 +309,7 @@ Requires:       python3dist(dill)
 Provides:       pytorch
 
 # Apache-2.0
-Provides:       bundled(flatbuffers) = 22.3.3
+Prpthreadpool-develovides:       bundled(flatbuffers) = 22.3.3
 # MIT
 Provides:       bundled(miniz) = 2.1.0
 Provides:       bundled(pybind11) = 2.11.1
@@ -727,6 +739,14 @@ export USE_SYSTEM_GLOO=ON
 %if %{with mpi}
 export USE_MPI=ON
 %endif
+%endif
+
+%if %{with vulkan}
+export USE_VULKAN=ON
+export USE_VULKAN_SHADERC_RUNTIME=1
+# Useing vulkan wrapper due vulkan env variable not being exposed in Fedora.
+# This will cause a small delays which may become a bottleneck in prolonged workloads.
+export USE_VULKAN_WRAPPER=1
 %endif
 
 %if %{with opencv}
